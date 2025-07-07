@@ -643,7 +643,7 @@ export default function DressMePage() {
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth={2}
+                        strokeWidth="2"
                         strokeLineCap="round"
                         strokeLineJoin="round"
                         className="text-muted-foreground"
@@ -696,5 +696,3 @@ export default function DressMePage() {
     </>
   );
 }
-
-    

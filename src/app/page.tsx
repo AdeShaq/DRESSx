@@ -274,55 +274,56 @@ export default function DressMePage() {
   const isReadyToGenerate = userPhoto && selectedTop && selectedBottom;
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-secondary/30">
-      <input
-        type="file"
-        ref={userPhotoInputRef}
-        onChange={handleFileUpload(setUserPhoto)}
-        accept="image/*"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={poseInputRef}
-        onChange={handleFileUpload(setPosePhoto)}
-        accept="image/*"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={topInputRef}
-        onChange={handleFileUpload(setTops, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
-      <input
-        type="file"
-        ref={bottomInputRef}
-        onChange={handleFileUpload(setBottoms, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
-      <input
-        type="file"
-        ref={shoeInputRef}
-        onChange={handleFileUpload(setShoes, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
+    <>
+ <div className="flex flex-col md:flex-row h-screen bg-secondary/30">
+ <input
+ type="file"
+ ref={userPhotoInputRef}
+ onChange={handleFileUpload(setUserPhoto)}
+ accept="image/*"
+ className="hidden"
+ />
+ <input
+ type="file"
+ ref={poseInputRef}
+ onChange={handleFileUpload(setPosePhoto)}
+ accept="image/*"
+ className="hidden"
+ />
+ <input
+ type="file"
+ ref={topInputRef}
+ onChange={handleFileUpload(setTops, true)}
+ accept="image/*"
+ className="hidden"
+ multiple
+ />
+ <input
+ type="file"
+ ref={bottomInputRef}
+ onChange={handleFileUpload(setBottoms, true)}
+ accept="image/*"
+ className="hidden"
+ multiple
+ />
+ <input
+ type="file"
+ ref={shoeInputRef}
+ onChange={handleFileUpload(setShoes, true)}
+ accept="image/*"
+ className="hidden"
+ multiple
+ />
 
-      <aside className="w-full md:w-96 bg-background border-r p-4 flex flex-col gap-6 overflow-y-auto">
-        <header>
-          <h1 className="text-2xl font-bold text-primary">DressMe</h1>
-          <p className="text-muted-foreground">
-            Your AI-powered virtual closet.
-          </p>
-        </header>
+ <aside className="w-full md:w-96 bg-background border-r p-4 flex flex-col gap-6 overflow-y-auto">
+ <header>
+ <h1 className="text-2xl font-bold text-primary">DressMe</h1>
+ <p className="text-muted-foreground">
+ Your AI-powered virtual closet.
+ </p>
+ </header>
 
-        <div className="space-y-4">
+ <div className="space-y-4">
           <h2 className="font-semibold">1. Your Photo</h2>
           {userPhoto ? (
             <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
@@ -435,7 +436,7 @@ export default function DressMePage() {
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Model Height</h3>
             <Input
-              placeholder="e.g., 5'10\" or 178cm"
+              placeholder="e.g., 5ft 10in or 178cm"
               value={modelHeight}
               onChange={e => setModelHeight(e.target.value)}
             />
@@ -443,65 +444,65 @@ export default function DressMePage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6 flex items-center justify-center">
+ <main className="flex-1 p-6 flex items-center justify-center">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+ <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium text-muted-foreground animate-pulse">
               Generating your masterpiece...
             </p>
-            <p className="text-sm text-muted-foreground">
+ <p className="text-sm text-muted-foreground">
               This can take up to a minute.
             </p>
           </div>
         ) : generatedOutfit ? (
           <Card className="max-w-2xl w-full animate-in fade-in zoom-in-95">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+ <CardHeader>
+ <CardTitle className="flex items-center gap-2">
                 <Sparkles className="text-accent" />
                 Here's Your Look!
               </CardTitle>
-              <CardDescription>
+ <CardDescription>
                 Zoom, share, or download your new virtual outfit.
               </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
+ </CardHeader>
+ <CardContent className="relative">
               <div className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted">
-                <Image
-                  src={generatedOutfit}
-                  alt="Generated Outfit"
-                  width={600}
-                  height={800}
-                  className="w-full h-full object-cover transition-transform duration-300"
-                  style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: 'center',
-                  }}
-                />
+ <Image
+ src={generatedOutfit}
+ alt="Generated Outfit"
+ width={600}
+ height={800}
+ className="w-full h-full object-cover transition-transform duration-300"
+ style={{
+ transform: `scale(${zoomLevel})`,
+ transformOrigin: 'center',
+ }}
+ />
               </div>
-              <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 backdrop-blur-sm p-1 rounded-lg shadow-md">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
-                >
+ <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 backdrop-blur-sm p-1 rounded-lg shadow-md">
+ <Button
+ size="icon"
+ variant="ghost"
+ className="h-8 w-8"
+ onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+ >
                   <ZoomOut className="h-4 w-4" />
                 </Button>
-                <span className="text-sm font-medium w-12 text-center select-none">
+ <span className="text-sm font-medium w-12 text-center select-none">
                   {(zoomLevel * 100).toFixed(0)}%
                 </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.1))}
-                >
+ <Button
+ size="icon"
+ variant="ghost"
+ className="h-8 w-8"
+ onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.1))}
+ >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
               </div>
-            </CardContent>
-            <CardFooter className="justify-end gap-2">
+ </CardContent>
+ <CardFooter className="justify-end gap-2">
               <Button variant="outline" onClick={handleStartOver}>
                 Start Over
               </Button>
@@ -513,54 +514,54 @@ export default function DressMePage() {
                   <Share2 className="mr-2 h-4 w-4" /> Share
                 </Button>
               )}
-            </CardFooter>
+ </CardFooter>
           </Card>
         ) : (
           <div className="flex flex-col items-center gap-8 text-center max-w-lg">
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+ <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="flex flex-col items-center gap-2">
                     <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
                         {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-12 w-12 text-muted-foreground" />}
                     </div>
                     <p className="font-medium">Your Photo</p>
                 </div>
-                 <div className="flex flex-col items-center gap-2">
+ <div className="flex flex-col items-center gap-2">
                      <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
                         {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-12 w-12 text-muted-foreground" />}
                     </div>
                     <p className="font-medium">Selected Top</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                     <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+ <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
                         {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="48"
                             height="48"
                             viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLineCap="round"
-                            strokeLineJoin="round"
+ fill="none"
+ stroke="currentColor"
+ strokeWidth={2}
+ strokeLinecap="round"
+ strokeLinejoin="round"
                             className="text-muted-foreground"
                           >
-                            <path d="M12 2v7.5" />
-                            <path d="m10 13-1.5 7.5" />
-                            <path d="M14 13l1.5 7.5" />
-                            <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
+ <path d="M12 2v7.5" />
+ <path d="m10 13-1.5 7.5" />
+ <path d="M14 13l1.5 7.5" />
+ <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
                           </svg>
                         )}
                     </div>
                     <p className="font-medium">Selected Bottom</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                     <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+ <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
                         {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-12 w-12 text-muted-foreground" />}
                     </div>
                     <p className="font-medium">Shoes</p>
                 </div>
-                 <div className="flex flex-col items-center gap-2">
+ <div className="flex flex-col items-center gap-2">
                      <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
                         {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-12 w-12 text-muted-foreground" />}
                     </div>
@@ -583,6 +584,7 @@ export default function DressMePage() {
           </div>
         )}
       </main>
-    </div>
+ </div>
+    </>
   );
 }

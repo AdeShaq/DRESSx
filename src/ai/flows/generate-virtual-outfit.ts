@@ -42,6 +42,9 @@ const GenerateVirtualOutfitInputSchema = z.object({
     .string()
     .optional()
     .describe('The height of the model, e.g., "5\'10\\"".'),
+  gender: z
+    .enum(['male', 'female'])
+    .describe('The gender of the model to be generated.'),
 });
 export type GenerateVirtualOutfitInput = z.infer<
   typeof GenerateVirtualOutfitInputSchema
@@ -89,7 +92,7 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     // 1. User Photo
     promptParts.push({media: {url: input.userPhotoDataUri}});
     textParts.push(
-      '1. **Person:** The person in the generated image must be the same person from the provided "User Photo" (the first image). Maintain all their physical characteristics: facial features, hair, body type, and skin tone.'
+      `1. **Person:** The person in the generated image must be the same person from the provided "User Photo" (the first image), presented as a ${input.gender}. Maintain all their physical characteristics: facial features, hair, body type, and skin tone.`
     );
 
     // 2. Pose Reference
@@ -128,16 +131,19 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     // Quality requirements
     textParts.push('**Quality & Style:**');
     textParts.push(
-      '- **Resolution & Detail:** The output must be of ultra-high quality (4K resolution). Every detail, from fabric texture to skin pores, should be visible and sharp.'
+      '- **Resolution & Detail:** The output must be of ultra-high quality (4K resolution). Every detail, from fabric texture to skin pores, should be visible and sharp. The image must be crisp with sharp focus and intricate details.'
     );
     textParts.push(
-      '- **Photorealism:** The image must be indistinguishable from a real photograph. Avoid any "AI" or "digital" look.'
+      '- **Photorealism:** The image must be indistinguishable from a real photograph. Avoid any "AI" or "digital" look. It must be highly realistic.'
     );
     textParts.push(
       '- **Lighting:** Use cinematic, dramatic, or professional studio lighting that enhances the details and creates a high-fashion mood.'
     );
     textParts.push(
-      '- **Background:** Place the person in a simple, neutral, minimalist studio background (like a clean grey or white wall) to ensure the focus remains on the person and their outfit.'
+      '- **Background:** Place the person in a simple, neutral, minimalist studio background (like a clean grey or white wall). There must be NO other items, props, furniture, or distractions in the background. The background should be completely plain.'
+    );
+    textParts.push(
+      '- **Framing:** The image must be a full-body shot. The person must always fit entirely in the frame, from head to toe, regardless of their height or pose. Do not crop any part of the body.'
     );
     textParts.push(
       "- **Consistency:** The generated person's face and body should be consistent with the input user photo. Do NOT generate random AI slop."

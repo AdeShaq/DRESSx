@@ -10,11 +10,13 @@ import {
   Loader2,
   Move,
   Plus,
+  RefreshCw,
   Share2,
   Shirt,
   Sparkles,
   Trash2,
   User,
+  UserRound,
   X,
   ZoomIn,
   ZoomOut,
@@ -32,6 +34,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -62,13 +69,19 @@ export default function DressMePage() {
   );
   const [selectedShoe, setSelectedShoe] = React.useState<string | null>(null);
   const [modelHeight, setModelHeight] = React.useState('');
+  const [gender, setGender] = React.useState<'male' | 'female'>('female');
 
   const [generatedOutfit, setGeneratedOutfit] = React.useState<string | null>(
     null
   );
   const [isLoading, setIsLoading] = React.useState(false);
   const [isShareSupported, setIsShareSupported] = React.useState(false);
-  const [zoomLevel, setZoomLevel] = React.useState(1);
+
+  // Pan and Zoom state
+  const imageContainerRef = React.useRef<HTMLDivElement>(null);
+  const [transform, setTransform] = React.useState({ scale: 1, x: 0, y: 0 });
+  const [isPanning, setIsPanning] = React.useState(false);
+  const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
 
   const userPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const poseInputRef = React.useRef<HTMLInputElement>(null);
@@ -81,6 +94,10 @@ export default function DressMePage() {
       setIsShareSupported(true);
     }
   }, []);
+
+  const resetTransform = () => {
+    setTransform({ scale: 1, x: 0, y: 0 });
+  };
 
   const handleFileUpload =
     (
@@ -127,7 +144,7 @@ export default function DressMePage() {
 
     setIsLoading(true);
     setGeneratedOutfit(null);
-    setZoomLevel(1);
+    resetTransform();
 
     const topItem = tops.find(t => t.id === selectedTop);
     const bottomItem = bottoms.find(b => b.id === selectedBottom);
@@ -151,6 +168,7 @@ export default function DressMePage() {
         shoeDataUri: shoeItem?.dataUri,
         poseReferenceDataUri: posePhoto?.dataUri,
         modelHeight: modelHeight,
+        gender: gender,
       });
 
       if (result.error) {
@@ -209,7 +227,7 @@ export default function DressMePage() {
 
   const handleStartOver = () => {
     setGeneratedOutfit(null);
-    setZoomLevel(1);
+    resetTransform();
   };
 
   const removeItem = (
@@ -231,6 +249,47 @@ export default function DressMePage() {
       if (selectedShoe === id) setSelectedShoe(null);
     }
   };
+
+  // Pan and Zoom handlers
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (!imageContainerRef.current) return;
+
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const zoomFactor = 1.1;
+    const newScale = e.deltaY < 0 ? transform.scale * zoomFactor : transform.scale / zoomFactor;
+    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
+
+    const newX = mouseX - (mouseX - transform.x) * (clampedScale / transform.scale);
+    const newY = mouseY - (mouseY - transform.y) * (clampedScale / transform.scale);
+    
+    setTransform({ scale: clampedScale, x: newX, y: newY });
+  };
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+  };
+  
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    setTransform(t => ({...t, x: e.clientX - panStart.x, y: e.clientY - panStart.y}));
+  };
+  
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
+
+  const handleZoomButtonClick = (direction: 'in' | 'out') => {
+    const zoomFactor = 1.2;
+    const newScale = direction === 'in' ? transform.scale * zoomFactor : transform.scale / zoomFactor;
+    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
+    setTransform(t => ({...t, scale: clampedScale}));
+  }
 
   const renderWardrobeItems = (
     items: ClothingItem[],
@@ -275,316 +334,367 @@ export default function DressMePage() {
 
   return (
     <>
- <div className="flex flex-col md:flex-row h-screen bg-secondary/30">
- <input
- type="file"
- ref={userPhotoInputRef}
- onChange={handleFileUpload(setUserPhoto)}
- accept="image/*"
- className="hidden"
- />
- <input
- type="file"
- ref={poseInputRef}
- onChange={handleFileUpload(setPosePhoto)}
- accept="image/*"
- className="hidden"
- />
- <input
- type="file"
- ref={topInputRef}
- onChange={handleFileUpload(setTops, true)}
- accept="image/*"
- className="hidden"
- multiple
- />
- <input
- type="file"
- ref={bottomInputRef}
- onChange={handleFileUpload(setBottoms, true)}
- accept="image/*"
- className="hidden"
- multiple
- />
- <input
- type="file"
- ref={shoeInputRef}
- onChange={handleFileUpload(setShoes, true)}
- accept="image/*"
- className="hidden"
- multiple
- />
+      <div className="flex flex-col md:flex-row h-screen bg-secondary/30">
+        <input
+          type="file"
+          ref={userPhotoInputRef}
+          onChange={handleFileUpload(setUserPhoto)}
+          accept="image/*"
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={poseInputRef}
+          onChange={handleFileUpload(setPosePhoto)}
+          accept="image/*"
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={topInputRef}
+          onChange={handleFileUpload(setTops, true)}
+          accept="image/*"
+          className="hidden"
+          multiple
+        />
+        <input
+          type="file"
+          ref={bottomInputRef}
+          onChange={handleFileUpload(setBottoms, true)}
+          accept="image/*"
+          className="hidden"
+          multiple
+        />
+        <input
+          type="file"
+          ref={shoeInputRef}
+          onChange={handleFileUpload(setShoes, true)}
+          accept="image/*"
+          className="hidden"
+          multiple
+        />
 
- <aside className="w-full md:w-96 bg-background border-r p-4 flex flex-col gap-6 overflow-y-auto">
- <header>
- <h1 className="text-2xl font-bold text-primary">DressMe</h1>
- <p className="text-muted-foreground">
- Your AI-powered virtual closet.
- </p>
- </header>
+        <aside className="w-full md:w-96 bg-background border-r p-4 flex flex-col gap-6 overflow-y-auto">
+          <header>
+            <h1 className="text-2xl font-bold text-primary">DressMe</h1>
+            <p className="text-muted-foreground">
+              Your AI-powered virtual closet.
+            </p>
+          </header>
 
- <div className="space-y-4">
-          <h2 className="font-semibold">1. Your Photo</h2>
-          {userPhoto ? (
-            <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
-              <Image
-                src={userPhoto.dataUri}
-                alt="User"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  onClick={() => removeItem(userPhoto.id, 'user')}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Change Photo
-                </Button>
+          <div className="space-y-4">
+            <h2 className="font-semibold">1. Your Photo</h2>
+            {userPhoto ? (
+              <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
+                <Image
+                  src={userPhoto.dataUri}
+                  alt="User"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="destructive"
+                    onClick={() => removeItem(userPhoto.id, 'user')}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Change Photo
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => userPhotoInputRef.current?.click()}
-              className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-            >
-              <User className="h-10 w-10 text-muted-foreground" />
-              <span className="mt-2 text-sm font-medium">Add Photo</span>
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="font-semibold">2. Pose Reference (Optional)</h2>
-          {posePhoto ? (
-            <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
-              <Image
-                src={posePhoto.dataUri}
-                alt="Pose Reference"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  onClick={() => removeItem(posePhoto.id, 'pose')}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Change Pose
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => poseInputRef.current?.click()}
-              className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-            >
-              <Move className="h-10 w-10 text-muted-foreground" />
-              <span className="mt-2 text-sm font-medium">Add Pose Photo</span>
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="font-semibold">3. Your Wardrobe</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Tops</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => topInputRef.current?.click()}
+            ) : (
+              <button
+                onClick={() => userPhotoInputRef.current?.click()}
+                className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(tops, selectedTop, setSelectedTop, 'top')}
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Bottoms</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => bottomInputRef.current?.click()}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(
-              bottoms,
-              selectedBottom,
-              setSelectedBottom,
-              'bottom'
+                <User className="h-10 w-10 text-muted-foreground" />
+                <span className="mt-2 text-sm font-medium">Add Photo</span>
+              </button>
             )}
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Shoes (Optional)</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => shoeInputRef.current?.click()}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(shoes, selectedShoe, setSelectedShoe, 'shoe')}
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <h2 className="font-semibold">4. Details (Optional)</h2>
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Model Height</h3>
-            <Input
-              placeholder="e.g., 5ft 10in or 178cm"
-              value={modelHeight}
-              onChange={e => setModelHeight(e.target.value)}
-            />
-          </div>
-        </div>
-      </aside>
-
- <main className="flex-1 p-6 flex items-center justify-center">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-4">
- <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium text-muted-foreground animate-pulse">
-              Generating your masterpiece...
-            </p>
- <p className="text-sm text-muted-foreground">
-              This can take up to a minute.
-            </p>
-          </div>
-        ) : generatedOutfit ? (
-          <Card className="max-w-2xl w-full animate-in fade-in zoom-in-95">
- <CardHeader>
- <CardTitle className="flex items-center gap-2">
-                <Sparkles className="text-accent" />
-                Here's Your Look!
-              </CardTitle>
- <CardDescription>
-                Zoom, share, or download your new virtual outfit.
-              </CardDescription>
- </CardHeader>
- <CardContent className="relative">
-              <div className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted">
- <Image
- src={generatedOutfit}
- alt="Generated Outfit"
- width={600}
- height={800}
- className="w-full h-full object-cover transition-transform duration-300"
- style={{
- transform: `scale(${zoomLevel})`,
- transformOrigin: 'center',
- }}
- />
+          <div className="space-y-4">
+            <h2 className="font-semibold">2. Pose Reference (Optional)</h2>
+            {posePhoto ? (
+              <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
+                <Image
+                  src={posePhoto.dataUri}
+                  alt="Pose Reference"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="destructive"
+                    onClick={() => removeItem(posePhoto.id, 'pose')}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Change Pose
+                  </Button>
+                </div>
               </div>
- <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 backdrop-blur-sm p-1 rounded-lg shadow-md">
- <Button
- size="icon"
- variant="ghost"
- className="h-8 w-8"
- onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
- >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
- <span className="text-sm font-medium w-12 text-center select-none">
-                  {(zoomLevel * 100).toFixed(0)}%
+            ) : (
+              <button
+                onClick={() => poseInputRef.current?.click()}
+                className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
+              >
+                <Move className="h-10 w-10 text-muted-foreground" />
+                <span className="mt-2 text-sm font-medium">
+                  Add Pose Photo
                 </span>
- <Button
- size="icon"
- variant="ghost"
- className="h-8 w-8"
- onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.1))}
- >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </div>
- </CardContent>
- <CardFooter className="justify-end gap-2">
-              <Button variant="outline" onClick={handleStartOver}>
-                Start Over
-              </Button>
-              <Button onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" /> Download
-              </Button>
-              {isShareSupported && (
-                <Button onClick={handleShare}>
-                  <Share2 className="mr-2 h-4 w-4" /> Share
-                </Button>
-              )}
- </CardFooter>
-          </Card>
-        ) : (
-          <div className="flex flex-col items-center gap-8 text-center max-w-lg">
- <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-12 w-12 text-muted-foreground" />}
-                    </div>
-                    <p className="font-medium">Your Photo</p>
-                </div>
- <div className="flex flex-col items-center gap-2">
-                     <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-12 w-12 text-muted-foreground" />}
-                    </div>
-                    <p className="font-medium">Selected Top</p>
-                </div>
-                <div className="flex flex-col items-center gap-2">
- <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="48"
-                            height="48"
-                            viewBox="0 0 24 24"
- fill="none"
- stroke="currentColor"
- strokeWidth={2}
- strokeLinecap="round"
- strokeLinejoin="round"
-                            className="text-muted-foreground"
-                          >
- <path d="M12 2v7.5" />
- <path d="m10 13-1.5 7.5" />
- <path d="M14 13l1.5 7.5" />
- <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
-                          </svg>
-                        )}
-                    </div>
-                    <p className="font-medium">Selected Bottom</p>
-                </div>
-                <div className="flex flex-col items-center gap-2">
- <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-12 w-12 text-muted-foreground" />}
-                    </div>
-                    <p className="font-medium">Shoes</p>
-                </div>
- <div className="flex flex-col items-center gap-2">
-                     <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-12 w-12 text-muted-foreground" />}
-                    </div>
-                    <p className="font-medium">Pose</p>
-                </div>
-            </div>
-            <Button
-              size="lg"
-              onClick={handleGenerateOutfit}
-              disabled={!isReadyToGenerate || isLoading}
-              className="bg-accent text-accent-foreground hover:bg-accent/90 transition-all hover:scale-105"
-            >
-              Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            {!isReadyToGenerate && (
-              <p className="text-sm text-muted-foreground">
-                Select a photo, top, and bottom to begin.
-              </p>
+              </button>
             )}
           </div>
-        )}
-      </main>
- </div>
+
+          <div className="space-y-4">
+            <h2 className="font-semibold">3. Your Wardrobe</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Tops</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => topInputRef.current?.click()}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add
+                </Button>
+              </div>
+              {renderWardrobeItems(tops, selectedTop, setSelectedTop, 'top')}
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Bottoms</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => bottomInputRef.current?.click()}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add
+                </Button>
+              </div>
+              {renderWardrobeItems(
+                bottoms,
+                selectedBottom,
+                setSelectedBottom,
+                'bottom'
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Shoes (Optional)</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => shoeInputRef.current?.click()}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add
+                </Button>
+              </div>
+              {renderWardrobeItems(
+                shoes,
+                selectedShoe,
+                setSelectedShoe,
+                'shoe'
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="font-semibold">4. Details</h2>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gender</Label>
+              <RadioGroup
+                value={gender}
+                onValueChange={(value: 'male' | 'female') => setGender(value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="r-female" />
+                  <Label htmlFor="r-female">Female</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="r-male" />
+                  <Label htmlFor="r-male">Male</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Model Height (Optional)
+              </Label>
+              <Input
+                placeholder="e.g., 5ft 10in or 178cm"
+                value={modelHeight}
+                onChange={e => setModelHeight(e.target.value)}
+              />
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 p-6 flex items-center justify-center">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg font-medium text-muted-foreground animate-pulse">
+                Generating your masterpiece...
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This can take up to a minute.
+              </p>
+            </div>
+          ) : generatedOutfit ? (
+            <Card className="max-w-2xl w-full animate-in fade-in zoom-in-95">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="text-accent" />
+                  Here's Your Look!
+                </CardTitle>
+                <CardDescription>
+                  Pan and zoom, share, or download your new virtual outfit.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="relative">
+                <div
+                  ref={imageContainerRef}
+                  className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted cursor-grab"
+                  onWheel={handleWheel}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                >
+                  <Image
+                    src={generatedOutfit}
+                    alt="Generated Outfit"
+                    width={800}
+                    height={1067}
+                    className="w-full h-full object-cover transition-transform duration-300 pointer-events-none"
+                    style={{
+                      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                      transformOrigin: '0 0',
+                    }}
+                    draggable={false}
+                  />
+                </div>
+                <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 backdrop-blur-sm p-1 rounded-lg shadow-md">
+                   <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => handleZoomButtonClick('out')}
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium w-12 text-center select-none">
+                    {(transform.scale * 100).toFixed(0)}%
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => handleZoomButtonClick('in')}
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={resetTransform}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+              <CardFooter className="justify-end gap-2">
+                <Button variant="outline" onClick={handleStartOver}>
+                  Start Over
+                </Button>
+                <Button onClick={handleDownload}>
+                  <Download className="mr-2 h-4 w-4" /> Download
+                </Button>
+                {isShareSupported && (
+                  <Button onClick={handleShare}>
+                    <Share2 className="mr-2 h-4 w-4" /> Share
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          ) : (
+            <div className="flex flex-col items-center gap-8 text-center max-w-lg">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-12 w-12 text-muted-foreground" />}
+                  </div>
+                  <p className="font-medium">Your Photo</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-12 w-12 text-muted-foreground" />}
+                  </div>
+                  <p className="font-medium">Selected Top</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLineCap="round"
+                        strokeLineJoin="round"
+                        className="text-muted-foreground"
+                      >
+                        <path d="M12 2v7.5" />
+                        <path d="m10 13-1.5 7.5" />
+                        <path d="M14 13l1.5 7.5" />
+                        <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
+                      </svg>
+                    )}
+                  </div>
+                  <p className="font-medium">Selected Bottom</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-12 w-12 text-muted-foreground" />}
+                  </div>
+                  <p className="font-medium">Shoes</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-12 w-12 text-muted-foreground" />}
+                  </div>
+                  <p className="font-medium">Pose</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                    {gender === 'female' ? <UserRound className="h-12 w-12 text-muted-foreground" /> : <User className="h-12 w-12 text-muted-foreground" />}
+                  </div>
+                  <p className="font-medium">Gender</p>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                onClick={handleGenerateOutfit}
+                disabled={!isReadyToGenerate || isLoading}
+                className="bg-accent text-accent-foreground hover:bg-accent/90 transition-all hover:scale-105"
+              >
+                Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              {!isReadyToGenerate && (
+                <p className="text-sm text-muted-foreground">
+                  Select a photo, top, and bottom to begin.
+                </p>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
     </>
   );
 }
+
+    

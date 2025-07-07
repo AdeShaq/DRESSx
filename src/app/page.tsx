@@ -644,8 +644,8 @@ export default function DressMePage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        strokeLineCap="round"
-                        strokeLineJoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         className="text-muted-foreground"
                       >
                         <path d="M12 2v7.5" />
@@ -696,3 +696,5 @@ export default function DressMePage() {
     </>
   );
 }
+
+    

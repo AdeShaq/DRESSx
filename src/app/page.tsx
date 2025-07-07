@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -540,8 +541,8 @@ export default function DressMePage() {
                             fill="none"
                             stroke="currentColor"
                             strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            strokeLineCap="round"
+                            strokeLineJoin="round"
                             className="text-muted-foreground"
                           >
                             <path d="M12 2v7.5" />
@@ -568,13 +569,9 @@ export default function DressMePage() {
             </div>
             <Button
               size="lg"
-              style={{
-                backgroundColor: 'hsl(var(--accent))',
-                color: 'hsl(var(--accent-foreground))',
-              }}
               onClick={handleGenerateOutfit}
               disabled={!isReadyToGenerate || isLoading}
-              className="transition-all hover:scale-105"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 transition-all hover:scale-105"
             >
               Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

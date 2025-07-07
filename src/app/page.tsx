@@ -531,7 +531,25 @@ export default function DressMePage() {
                 </div>
                 <div className="flex flex-col items-center gap-2">
                      <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                        {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><path d="M12 2v7.5"/><path d="m10 13-1.5 7.5"/><path d="M14 13l1.5 7.5"/><path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z"/></svg>}
+                        {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="48"
+                            height="48"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted-foreground"
+                          >
+                            <path d="M12 2v7.5" />
+                            <path d="m10 13-1.5 7.5" />
+                            <path d="M14 13l1.5 7.5" />
+                            <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
+                          </svg>
+                        )}
                     </div>
                     <p className="font-medium">Selected Bottom</p>
                 </div>

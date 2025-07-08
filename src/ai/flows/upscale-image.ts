@@ -41,10 +41,10 @@ const upscaleImageFlow = ai.defineFlow(
   async ({imageDataUri}) => {
     const upscaleResult = await runReplicate({
       model:
-        'nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5236e7a8c6300', // Switched to a more stable model
+        'replicate/real-esrgan:a2205fe229f3d548324f114c63f101372330a108a718c547844a95a435ad55a1', // Switched to the official, public ESRGAN model
       input: {
-        image: imageDataUri, // This model uses 'image' as the input parameter
-        scale: 4, // upscale 4x
+        image: imageDataUri,
+        scale: 4,
       },
     });
 

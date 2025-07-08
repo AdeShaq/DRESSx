@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates a photorealistic image of the user wearing the selected outfit.
@@ -72,41 +73,23 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     outputSchema: GenerateVirtualOutfitOutputSchema,
   },
   async input => {
-    // This consolidated prompt structure is more robust and less likely to cause internal server errors
-    // with the image generation API, while still providing clear instructions.
-    const textPrompt = `
-      You are an expert virtual stylist. Your task is to generate a single, ultra-high-quality, 4K photorealistic image of a person wearing a new outfit.
-      Follow these instructions precisely. The images are provided after this text.
+    // This simplified prompt is more direct and less likely to cause internal server errors.
+    const textPrompt = `You are a virtual fashion expert. Create one ultra-realistic, 4K, full-body photograph of a model.
 
-      **1. Identity (Most Important):**
-      - The generated person's face, hair, body type, and skin tone MUST be IDENTICAL to the person in the **first image (User Photo)**.
-      - DO NOT change the person. This is a virtual try-on, not a new character. The likeness must be 99-100% accurate. This is the highest priority.
-
-      **2. Pose:**
-      - The person must adopt the **exact pose** from the **second image (Pose Reference)**.
-      - If a pose reference image is not provided, use the original pose from the **first image (User Photo)**.
-
-      **3. Clothing:**
-      - The person must wear the **top** from the clothing image provided.
-      - The person must wear the **bottoms** from the clothing image provided.
-      - If **shoes** are provided, the person must wear them.
-
-      **4. Model Details:**
-      - Gender: ${input.gender}.
-      - Height: ${input.modelHeight || 'not specified'}.
-
-      **5. Final Image Quality & Composition:**
-      - **Quality:** 4K resolution, photorealistic, sharp focus, cinematic lighting. It must look like a real, professional fashion photograph.
-      - **Framing:** The image MUST be a full-body shot. The person must fit entirely in the frame from head to toe. Do not crop any part of the body.
-      - **Background:** Use a simple, neutral, minimalist studio background (e.g., a clean grey or white wall). There must be NO other items, props, or distractions.
-    `;
+**CRITICAL INSTRUCTIONS:**
+- **FACE & BODY:** The model's face, hair, and body must be IDENTICAL to the person in the *first image* (the user's photo). This is the most important rule.
+- **POSE:** The model must be in the EXACT pose shown in the *second image* (the pose reference). If no pose reference is given, use the pose from the user's photo.
+- **CLOTHING:** The model must wear the provided top, bottom, and shoe garments.
+- **BACKGROUND:** The background must be a simple, neutral studio setting. There should be nothing else in the image.
+- **DETAILS:** The model is ${input.gender}${input.modelHeight ? `, ${input.modelHeight} tall` : ''}.
+`;
 
     const promptParts: (
       | {text: string}
       | {media: {url: string; contentType?: string}}
     )[] = [{text: textPrompt}];
 
-    // Add images in the order specified in the prompt
+    // The order of images is critical and must match the prompt's references (first image, second image, etc.).
     promptParts.push({media: {url: input.userPhotoDataUri}});
 
     if (input.poseReferenceDataUri) {

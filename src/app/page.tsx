@@ -56,6 +56,43 @@ const readFileAsDataURL = (file: File): Promise<string> => {
   });
 };
 
+const resizeImage = (
+  dataUri: string,
+  maxWidth: number = 1024,
+  maxHeight: number = 1024
+): Promise<string> => {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.9)); // Use JPEG for better compression
+      } else {
+        resolve(dataUri); // Fallback to original if context fails
+      }
+    };
+    img.src = dataUri;
+  });
+};
+
 export default function DressMePage() {
   const { toast } = useToast();
   const [userPhoto, setUserPhoto] = React.useState<ClothingItem | null>(null);
@@ -111,10 +148,14 @@ export default function DressMePage() {
 
       try {
         const newItems = await Promise.all(
-          Array.from(files).map(async file => ({
-            id: uuidv4(),
-            dataUri: await readFileAsDataURL(file),
-          }))
+          Array.from(files).map(async file => {
+            const dataUri = await readFileAsDataURL(file);
+            const resizedDataUri = await resizeImage(dataUri);
+            return {
+              id: uuidv4(),
+              dataUri: resizedDataUri,
+            };
+          })
         );
 
         if (isMultiple) {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -230,7 +229,7 @@ export default function DressMePage() {
         toast({
             variant: 'destructive',
             title: 'Upscaling Failed',
-            description: "The upscaler failed to run. This is usually caused by a missing Replicate API key. Please add your key to the .env file to enable this feature.",
+            description: upscaleResult.error,
         });
         // Keep the non-upscaled image if upscaling fails
       } else if (upscaleResult.upscaledImageDataUri) {

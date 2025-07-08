@@ -7,16 +7,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import Replicate from 'replicate';
 
-if (!process.env.REPLICATE_API_TOKEN) {
-  console.warn(
-    'REPLICATE_API_TOKEN not found in environment variables. The Replicate tool will not work. Please add it to your .env file.'
-  );
-}
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
-
 export const runReplicate = ai.defineTool(
   {
     name: 'runReplicate',
@@ -28,13 +18,27 @@ export const runReplicate = ai.defineTool(
     outputSchema: z.any(),
   },
   async ({model, input}) => {
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error(
+        'REPLICATE_API_TOKEN not found in environment variables. The Replicate tool will not work.'
+      );
+      throw new Error('The Replicate API key is missing. Please add it to your .env file to enable upscaling.');
+    }
+
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+
     try {
       console.log(`Running Replicate model: ${model}`);
       const output = await replicate.run(model as any, { input });
       return output;
     } catch (error) {
       console.error('Error running Replicate model:', error);
-      throw new Error('Failed to run Replicate model.');
+      if (error instanceof Error && error.message.includes('HTTPError: 401')) {
+          throw new Error('The Replicate API key is not valid. Please check the key in your .env file.');
+      }
+      throw new Error('Failed to run the Replicate upscaling model.');
     }
   }
 );

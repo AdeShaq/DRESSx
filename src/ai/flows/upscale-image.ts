@@ -48,10 +48,25 @@ const upscaleImageFlow = ai.defineFlow(
       },
     });
 
-    if (!upscaleResult) {
-      throw new Error('Image upscaling failed.');
+    if (!upscaleResult || typeof upscaleResult !== 'string') {
+      throw new Error('Image upscaling failed or returned an invalid format.');
     }
 
-    return {upscaledImageDataUri: upscaleResult as string};
+    // The result from Replicate is a URL, so we need to fetch it and convert to a data URI.
+    try {
+      const response = await fetch(upscaleResult);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch upscaled image from URL: ${response.statusText}`);
+      }
+      const imageBuffer = await response.arrayBuffer();
+      const mimeType = response.headers.get('content-type') || 'image/png';
+      const base64Image = Buffer.from(imageBuffer).toString('base64');
+      const dataUri = `data:${mimeType};base64,${base64Image}`;
+
+      return {upscaledImageDataUri: dataUri};
+    } catch (error) {
+      console.error("Error converting upscaled image URL to data URI:", error);
+      throw new Error('Failed to process the upscaled image.');
+    }
   }
 );

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { generateOutfitAction, upscaleImageAction } from '@/app/actions';
+import { generateOutfitAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -186,6 +186,7 @@ export default function DressMePage() {
 
     setIsLoading(true);
     setGeneratedOutfit(null);
+    setLoadingStep('Generating your masterpiece...');
     resetTransform();
 
     const topItem = tops.find(t => t.id === selectedTop);
@@ -203,8 +204,7 @@ export default function DressMePage() {
     }
 
     try {
-      // Step 1: Generate base image
-      setLoadingStep('Generating your masterpiece...');
+      // Generate image
       const result = await generateOutfitAction({
         userPhotoDataUri: userPhoto.dataUri,
         topClothingDataUri: topItem.dataUri,
@@ -218,30 +218,13 @@ export default function DressMePage() {
       if (result.error) {
         throw new Error(result.error);
       }
-      if (!result.generatedOutfitDataUri) {
-        throw new Error('Base image generation failed.');
+      
+      if (result.generatedOutfitDataUri) {
+        setGeneratedOutfit(result.generatedOutfitDataUri);
+      } else {
+        throw new Error('Image generation failed to return an image.');
       }
-
-      // Show base image while upscaling
-      setGeneratedOutfit(result.generatedOutfitDataUri);
-
-      // Step 2: Upscale the generated image
-      setLoadingStep('Upscaling your image to 4K...');
-      const upscaleResult = await upscaleImageAction({
-        imageDataUri: result.generatedOutfitDataUri,
-      });
-
-      if (upscaleResult.error) {
-        // If upscaling fails, we still have the base image, so just show a toast.
-        toast({
-          variant: 'destructive',
-          title: 'Upscaling Failed',
-          description: upscaleResult.error,
-        });
-        // Keep the non-upscaled image.
-      } else if (upscaleResult.upscaledImageDataUri) {
-        setGeneratedOutfit(upscaleResult.upscaledImageDataUri);
-      }
+      
     } catch (error) {
       const errorMessage =
         error instanceof Error

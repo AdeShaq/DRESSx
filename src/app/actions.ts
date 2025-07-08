@@ -5,22 +5,11 @@ import {
   type GenerateVirtualOutfitInput,
   type GenerateVirtualOutfitOutput,
 } from '@/ai/flows/generate-virtual-outfit';
-import {
-  upscaleImage,
-  type UpscaleImageInput,
-  type UpscaleImageOutput,
-} from '@/ai/flows/upscale-image';
 
 interface GenerateActionResult {
     generatedOutfitDataUri?: string;
     error?: string;
 }
-
-interface UpscaleActionResult {
-    upscaledImageDataUri?: string;
-    error?: string;
-}
-
 
 export async function generateOutfitAction(
   input: GenerateVirtualOutfitInput
@@ -37,37 +26,5 @@ export async function generateOutfitAction(
         return { error: `An error occurred during generation: ${error.message}` };
     }
     return { error: "An unknown error occurred while generating the outfit." };
-  }
-}
-
-export async function upscaleImageAction(
-  input: UpscaleImageInput
-): Promise<UpscaleActionResult> {
-  try {
-    const output: UpscaleImageOutput = await upscaleImage(input);
-    return { upscaledImageDataUri: output.upscaledImageDataUri };
-  } catch (error) {
-    console.error('Error upscaling image:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('API key is missing')) {
-        return {
-          error:
-            'Your Replicate API key is missing. Please add REPLICATE_API_TOKEN to your .env file.',
-        };
-      }
-      if (error.message.includes('API key is not valid')) {
-        return {
-          error:
-            'Your Replicate API key is not valid. Please check the key in your .env file.',
-        };
-      }
-       if (error.message.includes('Replicate model failed:')) {
-         return { error: error.message };
-       }
-      return {
-        error: `An error occurred during upscaling: ${error.message}`,
-      };
-    }
-    return { error: 'An unknown error occurred while upscaling the image.' };
   }
 }

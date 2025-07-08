@@ -215,27 +215,33 @@ export default function DressMePage() {
         gender: gender,
       });
 
-      if (result.error) { throw new Error(result.error); }
-      if (!result.generatedOutfitDataUri) { throw new Error('Base image generation failed.'); }
-      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      if (!result.generatedOutfitDataUri) {
+        throw new Error('Base image generation failed.');
+      }
+
       // Show base image while upscaling
       setGeneratedOutfit(result.generatedOutfitDataUri);
 
-      // Step 2: Upscale image
-      setLoadingStep('Upscaling to 4K quality...');
-      const upscaleResult = await upscaleImageAction({ imageDataUri: result.generatedOutfitDataUri });
-      
-      if (upscaleResult.error) { 
+      // Step 2: Upscale the generated image
+      setLoadingStep('Upscaling your image to 4K...');
+      const upscaleResult = await upscaleImageAction({
+        imageDataUri: result.generatedOutfitDataUri,
+      });
+
+      if (upscaleResult.error) {
+        // If upscaling fails, we still have the base image, so just show a toast.
         toast({
-            variant: 'destructive',
-            title: 'Upscaling Failed',
-            description: upscaleResult.error,
+          variant: 'destructive',
+          title: 'Upscaling Failed',
+          description: upscaleResult.error,
         });
-        // Keep the non-upscaled image if upscaling fails
+        // Keep the non-upscaled image.
       } else if (upscaleResult.upscaledImageDataUri) {
         setGeneratedOutfit(upscaleResult.upscaledImageDataUri);
       }
-
     } catch (error) {
       const errorMessage =
         error instanceof Error

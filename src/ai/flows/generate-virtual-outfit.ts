@@ -73,15 +73,24 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     outputSchema: GenerateVirtualOutfitOutputSchema,
   },
   async input => {
-    // This simplified prompt is more direct and less likely to cause internal server errors.
-    const textPrompt = `You are a virtual fashion expert. Create one ultra-realistic, 4K, full-body photograph of a model.
+    // Dynamically build the prompt to avoid logic errors.
+    let textPrompt = `You are a virtual fashion expert. Create one ultra-realistic, 4K, full-body photograph of a model.
 
 **CRITICAL INSTRUCTIONS:**
 - **FACE & BODY:** The model's face, hair, and body must be IDENTICAL to the person in the *first image* (the user's photo). This is the most important rule.
-- **POSE:** The model must be in the EXACT pose shown in the *second image* (the pose reference). If no pose reference is given, use the pose from the user's photo.
-- **CLOTHING:** The model must wear the provided top, bottom, and shoe garments.
+`;
+
+    if (input.poseReferenceDataUri) {
+      textPrompt += `- **POSE:** The model must be in the EXACT pose shown in the *second image* (the pose reference).\n`;
+    } else {
+      textPrompt += `- **POSE:** The model must use the EXACT pose from the *first image* (the user's photo).\n`;
+    }
+
+    textPrompt += `- **CLOTHING:** The model must wear the provided top, bottom, and shoe garments.
 - **BACKGROUND:** The background must be a simple, neutral studio setting. There should be nothing else in the image.
-- **DETAILS:** The model is ${input.gender}${input.modelHeight ? `, ${input.modelHeight} tall` : ''}.
+- **DETAILS:** The model is ${input.gender}${
+      input.modelHeight ? `, ${input.modelHeight} tall` : ''
+    }.
 `;
 
     const promptParts: (
@@ -113,7 +122,8 @@ const generateVirtualOutfitFlow = ai.defineFlow(
 
     if (!response.media?.url) {
       throw new Error(
-        'Image generation failed. No media was returned from the model. ' + (response.text || '')
+        'Image generation failed. No media was returned from the model. ' +
+          (response.text || '')
       );
     }
 

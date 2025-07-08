@@ -35,10 +35,14 @@ export const runReplicate = ai.defineTool(
       return output;
     } catch (error) {
       console.error('Error running Replicate model:', error);
-      if (error instanceof Error && error.message.includes('HTTPError: 401')) {
+       if (error instanceof Error) {
+        if (error.message.includes('HTTPError: 401')) {
           throw new Error('The Replicate API key is not valid. Please check the key in your .env file.');
+        }
+        // Re-throw a more specific error message to the client.
+        throw new Error(`Replicate model failed: ${error.message}`);
       }
-      throw new Error('Failed to run the Replicate upscaling model.');
+      throw new Error('Failed to run the Replicate upscaling model due to an unknown error.');
     }
   }
 );

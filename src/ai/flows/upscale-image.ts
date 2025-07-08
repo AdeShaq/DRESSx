@@ -41,9 +41,9 @@ const upscaleImageFlow = ai.defineFlow(
   async ({imageDataUri}) => {
     const upscaleResult = await runReplicate({
       model:
-        'xinntao/real-esrgan:5952f4c9c05e1604a11b689361001ed44439c2780798e4952047d30f78c851b4', // Use official and updated model
+        'nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5236e7a8c6300', // Switched to a more stable model
       input: {
-        img: imageDataUri, // Correct input parameter name for this model
+        image: imageDataUri, // This model uses 'image' as the input parameter
         scale: 4, // upscale 4x
       },
     });

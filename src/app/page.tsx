@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { generateOutfitAction } from '@/app/actions';
+import { generateOutfitAction, upscaleImageAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -112,6 +112,7 @@ export default function DressMePage() {
     null
   );
   const [isLoading, setIsLoading] = React.useState(false);
+  const [loadingStep, setLoadingStep] = React.useState('');
   const [isShareSupported, setIsShareSupported] = React.useState(false);
 
   // Pan and Zoom state
@@ -203,6 +204,8 @@ export default function DressMePage() {
     }
 
     try {
+      // Step 1: Generate base image
+      setLoadingStep('Generating your masterpiece...');
       const result = await generateOutfitAction({
         userPhotoDataUri: userPhoto.dataUri,
         topClothingDataUri: topItem.dataUri,
@@ -213,11 +216,27 @@ export default function DressMePage() {
         gender: gender,
       });
 
-      if (result.error) {
-        throw new Error(result.error);
+      if (result.error) { throw new Error(result.error); }
+      if (!result.generatedOutfitDataUri) { throw new Error('Base image generation failed.'); }
+      
+      // Show base image while upscaling
+      setGeneratedOutfit(result.generatedOutfitDataUri);
+
+      // Step 2: Upscale image
+      setLoadingStep('Upscaling to 4K quality...');
+      const upscaleResult = await upscaleImageAction({ imageDataUri: result.generatedOutfitDataUri });
+      
+      if (upscaleResult.error) { 
+        toast({
+            variant: 'destructive',
+            title: 'Upscaling Failed',
+            description: upscaleResult.error + " This may be due to a missing Replicate API key.",
+        });
+        // Keep the non-upscaled image if upscaling fails
+      } else if (upscaleResult.upscaledImageDataUri) {
+        setGeneratedOutfit(upscaleResult.upscaledImageDataUri);
       }
 
-      setGeneratedOutfit(result.generatedOutfitDataUri!);
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -230,6 +249,7 @@ export default function DressMePage() {
       });
     } finally {
       setIsLoading(false);
+      setLoadingStep('');
     }
   };
 
@@ -593,10 +613,10 @@ export default function DressMePage() {
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="text-lg font-medium text-foreground/80 animate-pulse">
-                Generating your masterpiece...
+                {loadingStep}
               </p>
               <p className="text-sm text-muted-foreground">
-                This can take up to a minute. Please be patient.
+                This can take a few moments. Please be patient.
               </p>
             </div>
           ) : generatedOutfit ? (

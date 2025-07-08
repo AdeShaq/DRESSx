@@ -5,25 +5,48 @@ import {
   type GenerateVirtualOutfitInput,
   type GenerateVirtualOutfitOutput,
 } from '@/ai/flows/generate-virtual-outfit';
+import {
+    upscaleImage,
+    type UpscaleImageInput,
+    type UpscaleImageOutput,
+} from '@/ai/flows/upscale-image';
 
-interface ActionResult {
+interface GenerateActionResult {
     generatedOutfitDataUri?: string;
     error?: string;
 }
 
 export async function generateOutfitAction(
   input: GenerateVirtualOutfitInput
-): Promise<ActionResult> {
+): Promise<GenerateActionResult> {
   try {
     const output: GenerateVirtualOutfitOutput = await generateVirtualOutfit(input);
     return { generatedOutfitDataUri: output.generatedOutfitDataUri };
   } catch (error) {
     console.error("Error generating outfit:", error);
-    // It's better to return a generic error message to the client
-    // for security reasons, unless you want to expose specific error details.
     if (error instanceof Error) {
-        return { error: `An error occurred: ${error.message}` };
+        return { error: `An error occurred during generation: ${error.message}` };
     }
     return { error: "An unknown error occurred while generating the outfit." };
+  }
+}
+
+interface UpscaleActionResult {
+    upscaledImageDataUri?: string;
+    error?: string;
+}
+
+export async function upscaleImageAction(
+  input: UpscaleImageInput
+): Promise<UpscaleActionResult> {
+  try {
+    const output: UpscaleImageOutput = await upscaleImage(input);
+    return { upscaledImageDataUri: output.upscaledImageDataUri };
+  } catch (error) {
+    console.error("Error upscaling image:", error);
+     if (error instanceof Error) {
+        return { error: `An error occurred during upscaling: ${error.message}` };
+    }
+    return { error: "An unknown error occurred while upscaling the image." };
   }
 }

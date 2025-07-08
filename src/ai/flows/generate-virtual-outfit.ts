@@ -72,59 +72,70 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     outputSchema: GenerateVirtualOutfitOutputSchema,
   },
   async input => {
-    const promptParts: (
-      | {text: string}
-      | {media: {url: string}}
-    )[] = [];
+    const promptParts: ({text: string} | {media: {url: string}})[] = [];
 
     // Main Instruction Block
-    promptParts.push({ text: `You are an expert photorealistic virtual try-on AI. Your only job is to generate a single, ultra-realistic, 4K, full-body photograph of a person wearing a specific outfit. Follow these instructions perfectly.
+    promptParts.push({
+      text: `You are a state-of-the-art virtual try-on system. Your task is to create a single, photorealistic, full-body image of a person wearing a specific outfit. Adherence to the following rules is mandatory and non-negotiable.
 
-**CRITICAL RULE #1: THE FRAME (NON-NEGOTIABLE)**
-- The final image **MUST** be a full-body shot.
-- The model must be fully visible from head to toe.
-- **DO NOT CROP THE HEAD OR FEET. THIS IS THE MOST IMPORTANT RULE.**
+**PRIMARY DIRECTIVE: FACE IDENTITY**
+The face in the generated image must be an EXACT replica of the face in the "USER_PHOTO". No changes to facial features, structure, skin tone, or hairstyle are permitted. This is the most critical instruction.
 
-**CRITICAL RULE #2: THE FACE (NON-NEGOTIABLE)**
-- The person in the generated image **MUST BE THE EXACT SAME PERSON** from the 'User Photo' provided below.
-- The face, hair, and all features **MUST BE IDENTICAL.** Do not change anything. This is the second most important rule.
+**SECONDARY DIRECTIVE: IMAGE COMPOSITION**
+The generated image must be a FULL-BODY shot, from head to toe. No part of the model's head, hair, or feet may be cropped or cut off by the image frame. The subject must be centered.
 
-**INSTRUCTIONS:**
-You will now be given the source images. Use them to construct the final photograph.` });
+You will be provided with the following source images.
+`,
+    });
 
-    // 1. The Person (Face)
-    promptParts.push({ text: `\n\n**1. User Photo (Source for Face and Body):** The face and body in your final image MUST be identical to this person.` });
-    promptParts.push({ media: {url: input.userPhotoDataUri} });
+    // SOURCE IMAGE 1: USER_PHOTO
+    promptParts.push({
+      text: `\n\n**SOURCE IMAGE 1: USER_PHOTO**\nThis image provides the person's face, body, and (unless overridden by a pose reference) the pose.`,
+    });
+    promptParts.push({media: {url: input.userPhotoDataUri}});
 
-    // 2. The Pose
+    // SOURCE IMAGE 2: POSE_REFERENCE (if provided)
     if (input.poseReferenceDataUri) {
-      promptParts.push({ text: `\n\n**2. Pose Reference:** The model must hold the **EXACT** pose from this image.` });
-      promptParts.push({ media: {url: input.poseReferenceDataUri} });
-    } else {
-      promptParts.push({ text: `\n\n**2. Pose Reference:** The model must hold the **EXACT** pose from the 'User Photo' provided above.` });
+      promptParts.push({
+        text: `\n\n**SOURCE IMAGE 2: POSE_REFERENCE**\nThe person in the final image must adopt this exact pose.`,
+      });
+      promptParts.push({media: {url: input.poseReferenceDataUri}});
     }
 
-    // 3. The Outfit
-    promptParts.push({ text: `\n\n**3. The Outfit:** The model must wear these exact items.` });
-    promptParts.push({ text: `\n**Top:**` });
-    promptParts.push({ media: {url: input.topClothingDataUri} });
-    promptParts.push({ text: `\n**Bottom:**` });
-    promptParts.push({ media: {url: input.bottomClothingDataUri} });
+    // SOURCE IMAGE 3: OUTFIT_TOP
+    promptParts.push({
+      text: `\n\n**SOURCE IMAGE 3: OUTFIT_TOP**\nThe person must wear this exact top.`,
+    });
+    promptParts.push({media: {url: input.topClothingDataUri}});
+
+    // SOURCE IMAGE 4: OUTFIT_BOTTOM
+    promptParts.push({
+      text: `\n\n**SOURCE IMAGE 4: OUTFIT_BOTTOM**\nThe person must wear these exact bottoms.`,
+    });
+    promptParts.push({media: {url: input.bottomClothingDataUri}});
+
+    // SOURCE IMAGE 5: OUTFIT_SHOES (if provided)
     if (input.shoeDataUri) {
-        promptParts.push({ text: `\n**Shoes:**` });
-        promptParts.push({ media: {url: input.shoeDataUri} });
+      promptParts.push({
+        text: `\n\n**SOURCE IMAGE 5: OUTFIT_SHOES**\nThe person must wear these exact shoes.`,
+      });
+      promptParts.push({media: {url: input.shoeDataUri}});
     }
-    
-    // 4. Final Details & Confirmation
-    promptParts.push({ text: `\n\n**4. Final Image Requirements:**
-- **Framing & Composition:** The image **MUST** be a full-body photograph. The subject must be centered. Ensure there is ample space around the entire body, from the top of the head to below the feet. **No part of the person, especially the head or feet, must be cut off by the edge of the image.** This is a non-negotiable rule.
-- **Model Details:** The model is a ${input.gender}${input.modelHeight ? ` and is ${input.modelHeight} tall` : ''}.
-- **Background:** The background **MUST** be a plain, neutral grey studio background. No other objects or distractions.
-- **Realism:** The final image must be indistinguishable from a real photograph.
 
-**CONFIRMATION OF CRITICAL RULES:**
-1. Is the final image a **full-body shot** with head and feet fully visible and not cropped? YES.
-2. Is the face **identical** to the face in the 'User Photo'? YES.`
+    // Final Execution Parameters & Confirmation
+    promptParts.push({
+      text: `\n\n**FINAL EXECUTION PARAMETERS:**
+- **Model Identity:** A ${input.gender}${input.modelHeight ? ` who is ${input.modelHeight} tall` : ''}.
+- **Background:** Solid, neutral grey studio background. No other objects or scenery.
+- **Quality:** 4K, ultra-realistic photograph.
+- **AVOID:** Do not change the face. Do not crop the image. Do not generate a different person.
+
+**PRE-GENERATION CHECKLIST (Confirm YES):**
+1. Is the face identical to USER_PHOTO? YES.
+2. Is the pose identical to the pose reference (or USER_PHOTO if no reference is given)? YES.
+3. Is it a full-body shot with no cropping of head or feet? YES.
+
+Generate the image now.`,
     });
 
     const response = await ai.generate({

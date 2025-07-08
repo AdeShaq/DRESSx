@@ -230,7 +230,7 @@ export default function DressMePage() {
         toast({
             variant: 'destructive',
             title: 'Upscaling Failed',
-            description: upscaleResult.error + " This may be due to a missing Replicate API key.",
+            description: "The upscaler failed to run. This is usually caused by a missing Replicate API key. Please add your key to the .env file to enable this feature.",
         });
         // Keep the non-upscaled image if upscaling fails
       } else if (upscaleResult.upscaledImageDataUri) {

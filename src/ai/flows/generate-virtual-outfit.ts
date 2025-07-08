@@ -125,12 +125,14 @@ The model must wear the following clothing items exactly as they appear in the i
     
     promptParts.push({
       text: `\n**4. FINAL IMAGE REQUIREMENTS**
+- **CRITICAL FRAMING RULE:** The final image **MUST** be a full-body shot. The model must be fully visible from head to toe, perfectly centered in the frame. **DO NOT CROP THE HEAD OR FEET. THIS IS A STRICT REQUIREMENT.**
 - **Model Details:** The model is a ${input.gender}${input.modelHeight ? ` and is ${input.modelHeight} tall` : ''}.
 - **Realism:** The final image must be indistinguishable from a real photograph. Pay attention to natural lighting and how the clothes fit on the body.
-- **Framing:** The model must be fully visible from head to toe, perfectly centered in the frame. **DO NOT CROP THE HEAD OR FEET.**
 - **Background:** The background must be a plain, neutral grey studio background. There should be absolutely no other objects, props, or distractions.
 
-Re-confirming the most critical rule: The face in the output image must be IDENTICAL to the face in the user's photo. Generate the final image now.`
+Re-confirming the most critical rules:
+1. The face in the output image must be IDENTICAL to the face in the user's photo.
+2. The entire body, from head to toe, MUST be in the frame. No cropping.`
     });
     
 

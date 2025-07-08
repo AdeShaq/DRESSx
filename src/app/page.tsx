@@ -285,10 +285,19 @@ export default function DressMePage() {
   };
 
   const handleZoomButtonClick = (direction: 'in' | 'out') => {
+    if (!imageContainerRef.current) return;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
     const zoomFactor = 1.2;
     const newScale = direction === 'in' ? transform.scale * zoomFactor : transform.scale / zoomFactor;
     const clampedScale = Math.max(0.5, Math.min(newScale, 5));
-    setTransform(t => ({...t, scale: clampedScale}));
+    
+    const newX = centerX - (centerX - transform.x) * (clampedScale / transform.scale);
+    const newY = centerY - (centerY - transform.y) * (clampedScale / transform.scale);
+
+    setTransform({ scale: clampedScale, x: newX, y: newY });
   }
 
   const renderWardrobeItems = (
@@ -306,7 +315,7 @@ export default function DressMePage() {
               'aspect-square w-full rounded-lg overflow-hidden border-2 transition-all',
               selectedId === item.id
                 ? 'border-primary ring-2 ring-primary ring-offset-2 ring-offset-background'
-                : 'border-transparent hover:border-primary'
+                : 'border-transparent hover:border-primary/50'
             )}
           >
             <Image
@@ -334,7 +343,7 @@ export default function DressMePage() {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row h-screen bg-secondary/30">
+      <div className="flex flex-col md:flex-row min-h-screen bg-transparent">
         <input
           type="file"
           ref={userPhotoInputRef}
@@ -374,15 +383,15 @@ export default function DressMePage() {
           multiple
         />
 
-        <aside className="w-full md:w-96 bg-background border-r p-4 flex flex-col gap-6 overflow-y-auto">
-          <header>
+        <aside className="w-full md:w-96 bg-background/80 backdrop-blur-xl border-r p-4 flex flex-col gap-6 overflow-y-auto">
+          <header className="animate-in fade-in slide-in-from-top-4 duration-500">
             <h1 className="text-2xl font-bold text-primary">DressMe</h1>
             <p className="text-muted-foreground">
               Your AI-powered virtual closet.
             </p>
           </header>
 
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500" style={{animationDelay: '100ms'}}>
             <h2 className="font-semibold">1. Your Photo</h2>
             {userPhoto ? (
               <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
@@ -412,7 +421,7 @@ export default function DressMePage() {
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500" style={{animationDelay: '200ms'}}>
             <h2 className="font-semibold">2. Pose Reference (Optional)</h2>
             {posePhoto ? (
               <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
@@ -444,7 +453,7 @@ export default function DressMePage() {
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500" style={{animationDelay: '300ms'}}>
             <h2 className="font-semibold">3. Your Wardrobe</h2>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -497,7 +506,7 @@ export default function DressMePage() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500" style={{animationDelay: '400ms'}}>
             <h2 className="font-semibold">4. Details</h2>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Gender</Label>
@@ -529,19 +538,19 @@ export default function DressMePage() {
           </div>
         </aside>
 
-        <main className="flex-1 p-6 flex items-center justify-center">
+        <main className="flex-1 p-4 md:p-6 flex items-center justify-center">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-col items-center justify-center gap-4 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-lg font-medium text-muted-foreground animate-pulse">
+              <p className="text-lg font-medium text-foreground/80 animate-pulse">
                 Generating your masterpiece...
               </p>
               <p className="text-sm text-muted-foreground">
-                This can take up to a minute.
+                This can take up to a minute. Please be patient.
               </p>
             </div>
           ) : generatedOutfit ? (
-            <Card className="max-w-2xl w-full animate-in fade-in zoom-in-95">
+            <Card className="max-w-2xl w-full animate-in fade-in zoom-in-95 bg-card/60 backdrop-blur-lg border-white/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="text-accent" />
@@ -554,7 +563,7 @@ export default function DressMePage() {
               <CardContent className="relative">
                 <div
                   ref={imageContainerRef}
-                  className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted cursor-grab"
+                  className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted/50 cursor-grab active:cursor-grabbing"
                   onWheel={handleWheel}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
@@ -566,7 +575,7 @@ export default function DressMePage() {
                     alt="Generated Outfit"
                     width={800}
                     height={1067}
-                    className="w-full h-full object-cover transition-transform duration-300 pointer-events-none"
+                    className="w-full h-full object-contain transition-transform duration-200 pointer-events-none"
                     style={{
                       transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
                       transformOrigin: '0 0',
@@ -619,61 +628,50 @@ export default function DressMePage() {
               </CardFooter>
             </Card>
           ) : (
-            <div className="flex flex-col items-center gap-8 text-center max-w-lg">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="flex flex-col items-center gap-8 text-center max-w-lg animate-in fade-in zoom-in-95">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                    {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-12 w-12 text-muted-foreground" />}
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
                   </div>
-                  <p className="font-medium">Your Photo</p>
+                  <p className="font-medium text-sm md:text-base">Your Photo</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                    {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-12 w-12 text-muted-foreground" />}
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
                   </div>
-                  <p className="font-medium">Selected Top</p>
+                  <p className="font-medium text-sm md:text-base">Selected Top</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
                     {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-muted-foreground"
-                      >
-                        <path d="M12 2v7.5" />
-                        <path d="m10 13-1.5 7.5" />
-                        <path d="M14 13l1.5 7.5" />
-                        <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground h-10 w-10 md:h-12 md:w-12">
+                        <path d="M12 2v7.5"/>
+                        <path d="m10 13-1.5 7.5"/>
+                        <path d="M14 13l1.5 7.5"/>
+                        <path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z"/>
                       </svg>
                     )}
                   </div>
-                  <p className="font-medium">Selected Bottom</p>
+                  <p className="font-medium text-sm md:text-base">Selected Bottom</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                    {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-12 w-12 text-muted-foreground" />}
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
                   </div>
-                  <p className="font-medium">Shoes</p>
+                  <p className="font-medium text-sm md:text-base">Shoes</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                    {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-12 w-12 text-muted-foreground" />}
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
                   </div>
-                  <p className="font-medium">Pose</p>
+                  <p className="font-medium text-sm md:text-base">Pose</p>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-32 w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background">
-                    {gender === 'female' ? <UserRound className="h-12 w-12 text-muted-foreground" /> : <User className="h-12 w-12 text-muted-foreground" />}
+                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    {gender === 'female' ? <UserRound className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
                   </div>
-                  <p className="font-medium">Gender</p>
+                  <p className="font-medium text-sm md:text-base">Gender</p>
                 </div>
               </div>
               <Button
@@ -696,5 +694,3 @@ export default function DressMePage() {
     </>
   );
 }
-
-    

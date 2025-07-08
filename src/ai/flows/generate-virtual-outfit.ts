@@ -89,10 +89,10 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     // Source Images & Instructions
     textParts.push('**Source Images & Instructions:**');
 
-    // 1. User Photo
+    // 1. User Photo & Face
     promptParts.push({media: {url: input.userPhotoDataUri}});
     textParts.push(
-      `1. **Person:** The person in the generated image must be the same person from the provided "User Photo" (the first image), presented as a ${input.gender}. Maintain all their physical characteristics: facial features, hair, body type, and skin tone.`
+      `1. **Person & Face Identity:** The person in the generated image must be the *EXACT SAME PERSON* from the provided "User Photo" (the first image), presented as a ${input.gender}. This is the most important instruction. You MUST preserve their exact facial features, expression, hair style and color, body type, and skin tone. The generated face must be identical to the user's photo. Do not change the person.`
     );
 
     // 2. Pose Reference
@@ -146,7 +146,7 @@ const generateVirtualOutfitFlow = ai.defineFlow(
       '- **Framing:** The image must be a full-body shot. The person must always fit entirely in the frame, from head to toe, regardless of their height or pose. Do not crop any part of the body.'
     );
     textParts.push(
-      "- **Consistency:** The generated person's face and body should be consistent with the input user photo. Do NOT generate random AI slop."
+      "- **Consistency:** The generated person's face and body should be consistent with the input user photo. Do NOT generate random AI slop. This is critical."
     );
 
     // Final instruction

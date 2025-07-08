@@ -72,92 +72,53 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     outputSchema: GenerateVirtualOutfitOutputSchema,
   },
   async input => {
+    // This consolidated prompt structure is more robust and less likely to cause internal server errors
+    // with the image generation API, while still providing clear instructions.
+    const textPrompt = `
+      You are an expert virtual stylist. Your task is to generate a single, ultra-high-quality, 4K photorealistic image of a person wearing a new outfit.
+      Follow these instructions precisely. The images are provided after this text.
+
+      **1. Identity (Most Important):**
+      - The generated person's face, hair, body type, and skin tone MUST be IDENTICAL to the person in the **first image (User Photo)**.
+      - DO NOT change the person. This is a virtual try-on, not a new character. The likeness must be 99-100% accurate. This is the highest priority.
+
+      **2. Pose:**
+      - The person must adopt the **exact pose** from the **second image (Pose Reference)**.
+      - If a pose reference image is not provided, use the original pose from the **first image (User Photo)**.
+
+      **3. Clothing:**
+      - The person must wear the **top** from the clothing image provided.
+      - The person must wear the **bottoms** from the clothing image provided.
+      - If **shoes** are provided, the person must wear them.
+
+      **4. Model Details:**
+      - Gender: ${input.gender}.
+      - Height: ${input.modelHeight || 'not specified'}.
+
+      **5. Final Image Quality & Composition:**
+      - **Quality:** 4K resolution, photorealistic, sharp focus, cinematic lighting. It must look like a real, professional fashion photograph.
+      - **Framing:** The image MUST be a full-body shot. The person must fit entirely in the frame from head to toe. Do not crop any part of the body.
+      - **Background:** Use a simple, neutral, minimalist studio background (e.g., a clean grey or white wall). There must be NO other items, props, or distractions.
+    `;
+
     const promptParts: (
       | {text: string}
       | {media: {url: string; contentType?: string}}
-    )[] = [];
+    )[] = [{text: textPrompt}];
 
-    // Start with the main objective
-    promptParts.push({
-      text: `You are a world-class virtual stylist and digital fashion expert. Your task is to generate a single, ultra-high-quality, 4K resolution, photorealistic image.
-
-**Objective:** Create a full-body image of the person from the "User Photo" wearing a complete outfit. The final image must be incredibly detailed, with cinematic lighting, and look like a professional fashion photograph. The generated person's face and body MUST be consistent with the input user photo. Do NOT generate a random AI person. This is critical.
-
----
-**Source Images & Instructions:**
----
-`,
-    });
-
-    // User Photo & Face Identity - this is the MOST critical part
-    promptParts.push({
-      text: `**1. User Photo & Face Identity (CRITICAL INSTRUCTION):**
-The person in the generated image **MUST BE THE EXACT SAME PERSON** from the provided "User Photo" below. This is the most important instruction. You **MUST** preserve their exact facial features, expression, hair style and color, body type, and skin tone. **The generated face must be IDENTICAL to the user's photo. Do NOT change the person.** This is a virtual try-on, not a new character creation. The likeness must be 99-100% accurate.
-- The person should be presented as a ${input.gender}.
-${
-  input.modelHeight
-    ? `- Their height should appear to be ${input.modelHeight}.`
-    : ''
-}`,
-    });
+    // Add images in the order specified in the prompt
     promptParts.push({media: {url: input.userPhotoDataUri}});
 
-    // Pose Reference
     if (input.poseReferenceDataUri) {
-      promptParts.push({
-        text: `
-**2. Pose Reference:**
-The person in the final image must adopt the **exact pose** from the following "Pose Reference" image.`,
-      });
       promptParts.push({media: {url: input.poseReferenceDataUri}});
-    } else {
-      promptParts.push({
-        text: `
-**2. Pose:**
-Maintain the original pose from the "User Photo" provided above.`,
-      });
     }
 
-    // Clothing
-    promptParts.push({
-      text: `
----
-**Clothing to Wear:**
----
-`,
-    });
-
-    promptParts.push({
-      text: `**3. Top:** The person must wear the provided top.`,
-    });
     promptParts.push({media: {url: input.topClothingDataUri}});
-
-    promptParts.push({
-      text: `**4. Bottoms:** The person must wear the provided bottoms.`,
-    });
     promptParts.push({media: {url: input.bottomClothingDataUri}});
 
     if (input.shoeDataUri) {
-      promptParts.push({
-        text: `**5. Shoes:** The person must wear the provided shoes.`,
-      });
       promptParts.push({media: {url: input.shoeDataUri}});
     }
-
-    // Final Quality requirements
-    promptParts.push({
-      text: `
----
-**Final Image Requirements:**
----
-- **Resolution & Detail:** The output must be of **ultra-high quality (4K resolution)**. Every detail, from fabric texture to skin pores, should be visible and sharp. The image must be crisp with sharp focus and intricate details.
-- **Photorealism:** The image must be **indistinguishable from a real photograph**. Avoid any "AI" or "digital" look. It must be hyper-realistic.
-- **Lighting:** Use cinematic, dramatic, or professional studio lighting that enhances the details and creates a high-fashion mood.
-- **Background:** Place the person in a simple, neutral, minimalist studio background (like a clean grey or white wall). **There must be NO other items, props, furniture, or distractions in the background.** The background should be completely plain.
-- **Framing:** The image **MUST be a full-body shot**. The person must always fit entirely in the frame, from head to toe, regardless of their height or pose. **Do not crop any part of the body.**
-
-Generate only the single, final, photorealistic image based on all these instructions.`,
-    });
 
     const response = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
@@ -169,7 +130,7 @@ Generate only the single, final, photorealistic image based on all these instruc
 
     if (!response.media?.url) {
       throw new Error(
-        'Image generation failed. No media was returned from the model.'
+        'Image generation failed. No media was returned from the model. ' + (response.text || '')
       );
     }
 

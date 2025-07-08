@@ -1,9 +1,5 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-import {config} from 'dotenv';
-
-// Explicitly load environment variables to ensure they are available.
-config();
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 

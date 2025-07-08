@@ -73,44 +73,68 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     outputSchema: GenerateVirtualOutfitOutputSchema,
   },
   async input => {
-    // Dynamically build the prompt to avoid logic errors.
-    let textPrompt = `You are a virtual fashion expert. Create one ultra-realistic, 4K, full-body photograph of a model.
-
-**CRITICAL INSTRUCTIONS:**
-- **FACE & BODY:** The model's face, hair, and body must be IDENTICAL to the person in the *first image* (the user's photo). This is the most important rule.
-`;
-
-    if (input.poseReferenceDataUri) {
-      textPrompt += `- **POSE:** The model must be in the EXACT pose shown in the *second image* (the pose reference).\n`;
-    } else {
-      textPrompt += `- **POSE:** The model must use the EXACT pose from the *first image* (the user's photo).\n`;
-    }
-
-    textPrompt += `- **CLOTHING:** The model must wear the provided top, bottom, and shoe garments.
-- **BACKGROUND:** The background must be a simple, neutral studio setting. There should be nothing else in the image.
-- **DETAILS:** The model is ${input.gender}${
-      input.modelHeight ? `, ${input.modelHeight} tall` : ''
-    }.
-`;
-
     const promptParts: (
       | {text: string}
-      | {media: {url: string; contentType?: string}}
-    )[] = [{text: textPrompt}];
+      | {media: {url: string}}
+    )[] = [];
 
-    // The order of images is critical and must match the prompt's references (first image, second image, etc.).
+    promptParts.push({
+      text: `You are an expert virtual stylist. Your task is to generate one single, ultra-realistic, 4K, full-body photograph of a person wearing a specific outfit. Follow these instructions with extreme precision.
+
+**1. The Person (Most Important!)**
+The person in the generated image MUST BE THE EXACT SAME PERSON from the provided 'User Photo' below. The face, hair, and body MUST be identical. Do not change any features.
+`,
+    });
     promptParts.push({media: {url: input.userPhotoDataUri}});
 
     if (input.poseReferenceDataUri) {
+      promptParts.push({
+        text: `
+**2. The Pose**
+The model must be in the **EXACT** pose shown in the 'Pose Reference' image below. Replicate the body position, arm and leg placement, and head angle perfectly.`,
+      });
       promptParts.push({media: {url: input.poseReferenceDataUri}});
+    } else {
+      promptParts.push({
+        text: `
+**2. The Pose**
+The model must hold the **EXACT** pose from the 'User Photo' provided earlier.`,
+      });
     }
 
+    promptParts.push({
+      text: `
+**3. The Outfit**
+The model must wear the following clothing items exactly as they appear in the images below. Do not change the color, pattern, or style.
+
+**Top:**`,
+    });
     promptParts.push({media: {url: input.topClothingDataUri}});
+
+    promptParts.push({
+      text: `
+**Bottom:**`,
+    });
     promptParts.push({media: {url: input.bottomClothingDataUri}});
 
     if (input.shoeDataUri) {
+      promptParts.push({
+        text: `
+**Shoes:**`,
+      });
       promptParts.push({media: {url: input.shoeDataUri}});
     }
+
+    promptParts.push({
+      text: `
+**4. Final Image Requirements**
+- **Model Details:** The model is a ${input.gender}${input.modelHeight ? ` and is ${input.modelHeight} tall` : ''}.
+- **Realism:** The image must be photorealistic, with natural lighting and shadows. The fit of the clothes should look realistic on the model's body.
+- **Background:** The background must be a plain, neutral grey studio background. There should be absolutely no other objects, props, or distractions.
+- **Framing:** The model should be fully visible from head to toe, centered in the frame.
+
+Generate the final image now.`,
+    });
 
     const response = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',

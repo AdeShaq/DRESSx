@@ -78,28 +78,33 @@ const generateVirtualOutfitFlow = ai.defineFlow(
     )[] = [];
     const textParts: string[] = [];
 
-    // Main objective
     textParts.push(
       'You are a world-class virtual stylist and digital fashion expert. Your task is to generate a single, ultra-high-quality, 4K resolution, photorealistic image.'
     );
     textParts.push(
       '**Objective:** Create a full-body image of the person from the "User Photo" wearing a complete outfit. The final image must be incredibly detailed, with cinematic lighting, and look like a professional fashion photograph.'
     );
+    textParts.push('---');
 
-    // Source Images & Instructions
+    // Source Images and Instructions
     textParts.push('**Source Images & Instructions:**');
 
-    // 1. User Photo & Face
+    // 1. User Photo - This is the most important part.
     promptParts.push({media: {url: input.userPhotoDataUri}});
     textParts.push(
-      `1. **Person & Face Identity:** The person in the generated image must be the *EXACT SAME PERSON* from the provided "User Photo" (the first image), presented as a ${input.gender}. This is the most important instruction. You MUST preserve their exact facial features, expression, hair style and color, body type, and skin tone. The generated face must be identical to the user's photo. Do not change the person.`
+      '1. **CRITICAL INSTRUCTION: PERSON & FACE IDENTITY**:'
     );
+    textParts.push(
+      'The person in the generated image **MUST BE THE EXACT SAME PERSON** from the provided "User Photo" (the first image). This is the most important instruction. You **MUST** preserve their exact facial features, expression, hair style and color, body type, and skin tone. **The generated face must be IDENTICAL to the user\'s photo. Do NOT change the person. Do NOT generate a random AI person.** This is a virtual try-on, not a new character creation. The likeness must be 99-100% accurate.'
+    );
+    textParts.push(`- The person should be presented as a ${input.gender}.`);
+
 
     // 2. Pose Reference
     if (input.poseReferenceDataUri) {
       promptParts.push({media: {url: input.poseReferenceDataUri}});
       textParts.push(
-        '2. **Pose:** The person in the final image must adopt the exact pose from the "Pose Reference" image.'
+        '2. **Pose:** The person in the final image must adopt the **exact pose** from the "Pose Reference" image (the second image).'
       );
     } else {
       textParts.push(
@@ -109,52 +114,58 @@ const generateVirtualOutfitFlow = ai.defineFlow(
 
     // 3. Top
     promptParts.push({media: {url: input.topClothingDataUri}});
-    textParts.push('3. **Top:** The person must wear the provided top.');
+    textParts.push(
+      '3. **Top:** The person must wear the provided top (the third image).'
+    );
 
     // 4. Bottom
     promptParts.push({media: {url: input.bottomClothingDataUri}});
-    textParts.push('4. **Bottoms:** The person must wear the provided bottoms.');
+    textParts.push(
+      '4. **Bottoms:** The person must wear the provided bottoms (the fourth image).'
+    );
 
     // 5. Shoes
     if (input.shoeDataUri) {
       promptParts.push({media: {url: input.shoeDataUri}});
-      textParts.push('5. **Shoes:** The person must wear the provided shoes.');
-    }
-
-    // Additional Details
-    if (input.modelHeight) {
       textParts.push(
-        `**Height:** The person should appear to be ${input.modelHeight} tall.`
+        '5. **Shoes:** The person must wear the provided shoes (the fifth image).'
       );
     }
+    
+    textParts.push('---');
 
-    // Quality requirements
-    textParts.push('**Quality & Style:**');
+    // Additional Details
+    textParts.push('**Additional Details & Quality Requirements:**');
+    if (input.modelHeight) {
+      textParts.push(
+        `- **Height:** The person should appear to be ${input.modelHeight} tall.`
+      );
+    }
     textParts.push(
-      '- **Resolution & Detail:** The output must be of ultra-high quality (4K resolution). Every detail, from fabric texture to skin pores, should be visible and sharp. The image must be crisp with sharp focus and intricate details.'
+      '- **Resolution & Detail:** The output must be of **ultra-high quality (4K resolution)**. Every detail, from fabric texture to skin pores, should be visible and sharp. The image must be crisp with sharp focus and intricate details.'
     );
     textParts.push(
-      '- **Photorealism:** The image must be indistinguishable from a real photograph. Avoid any "AI" or "digital" look. It must be highly realistic.'
+      '- **Photorealism:** The image must be **indistinguishable from a real photograph**. Avoid any "AI" or "digital" look. It must be hyper-realistic.'
     );
     textParts.push(
       '- **Lighting:** Use cinematic, dramatic, or professional studio lighting that enhances the details and creates a high-fashion mood.'
     );
     textParts.push(
-      '- **Background:** Place the person in a simple, neutral, minimalist studio background (like a clean grey or white wall). There must be NO other items, props, furniture, or distractions in the background. The background should be completely plain.'
+      '- **Background:** Place the person in a simple, neutral, minimalist studio background (like a clean grey or white wall). **There must be NO other items, props, furniture, or distractions in the background.** The background should be completely plain.'
     );
     textParts.push(
-      '- **Framing:** The image must be a full-body shot. The person must always fit entirely in the frame, from head to toe, regardless of their height or pose. Do not crop any part of the body.'
+      '- **Framing:** The image **MUST be a full-body shot**. The person must always fit entirely in the frame, from head to toe, regardless of their height or pose. **Do not crop any part of the body.**'
     );
     textParts.push(
-      "- **Consistency:** The generated person's face and body should be consistent with the input user photo. Do NOT generate random AI slop. This is critical."
+      "- **Consistency:** The generated person's face and body MUST be consistent with the input user photo. **Do NOT generate random AI slop. This is critical.**"
     );
 
-    // Final instruction
+    textParts.push('---');
     textParts.push(
       'Generate only the single, final image based on all these instructions.'
     );
 
-    promptParts.push({text: textParts.join('\n\n')});
+    promptParts.push({text: textParts.join('\n')});
 
     const response = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',

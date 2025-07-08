@@ -90,7 +90,8 @@ export default function DressMePage() {
   const shoeInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (navigator.share) {
+    // Use `navigator.canShare` to check for file sharing support specifically
+    if (navigator.canShare && navigator.canShare({ files: [new File([], '')] })) {
       setIsShareSupported(true);
     }
   }, []);
@@ -202,7 +203,14 @@ export default function DressMePage() {
   };
 
   const handleShare = async () => {
-    if (!generatedOutfit || !isShareSupported) return;
+    if (!generatedOutfit || !isShareSupported) {
+       toast({
+        variant: 'destructive',
+        title: 'Sharing Not Supported',
+        description: 'Your browser does not support sharing files.',
+      });
+      return;
+    }
 
     try {
       const response = await fetch(generatedOutfit);
@@ -217,6 +225,7 @@ export default function DressMePage() {
         files: [file],
       });
     } catch (error) {
+       console.error("Share error:", error);
       toast({
         variant: 'destructive',
         title: 'Sharing Failed',
@@ -343,7 +352,7 @@ export default function DressMePage() {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row min-h-screen bg-transparent">
+      <div className="flex flex-col md:flex-row md:h-screen bg-transparent">
         <input
           type="file"
           ref={userPhotoInputRef}

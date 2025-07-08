@@ -74,68 +74,61 @@ const generateVirtualOutfitFlow = ai.defineFlow(
   async input => {
     const promptParts: ({text: string} | {media: {url: string}})[] = [];
 
-    // Main Instruction Block
     promptParts.push({
-      text: `You are a state-of-the-art virtual try-on system. Your task is to create a single, photorealistic, full-body image of a person wearing a specific outfit. Adherence to the following rules is mandatory and non-negotiable.
+      text: `You are an advanced image generation AI. Your SOLE function is to create a single photorealistic image based on a set of strict, non-negotiable directives.
 
-**PRIMARY DIRECTIVE: FACE IDENTITY**
-The face in the generated image must be an EXACT replica of the face in the "USER_PHOTO". No changes to facial features, structure, skin tone, or hairstyle are permitted. This is the most critical instruction.
+**RULE 1: ABSOLUTE FACE REPLICATION (MANDATORY)**
+The generated person's face MUST be an IDENTICAL, PIXEL-PERFECT replica of the face in the provided **USER_PHOTO**. There is ZERO tolerance for any alteration of facial features, structure, skin tone, or hairstyle. This is the most important rule. Failure to replicate the face exactly is a complete failure of the task.
 
-**SECONDARY DIRECTIVE: IMAGE COMPOSITION**
-The generated image must be a FULL-BODY shot, from head to toe. No part of the model's head, hair, or feet may be cropped or cut off by the image frame. The subject must be centered.
+**RULE 2: FULL-BODY COMPOSITION (MANDATORY)**
+The generated image MUST be a full-body portrait, showing the person from the top of their head to the soles of their feet. NO PART of the body, especially the head, hair, or feet, may be cropped or touch the edge of the image frame. The subject must be centered with adequate space around them.
 
-You will be provided with the following source images.
+**SOURCE IMAGES:**
+You will be provided with the following source images to construct the final output.
 `,
     });
 
-    // SOURCE IMAGE 1: USER_PHOTO
     promptParts.push({
-      text: `\n\n**SOURCE IMAGE 1: USER_PHOTO**\nThis image provides the person's face, body, and (unless overridden by a pose reference) the pose.`,
+      text: `\n\n**USER_PHOTO:** This is the reference for the person's face, hair, and body. The face MUST be replicated exactly.`,
     });
     promptParts.push({media: {url: input.userPhotoDataUri}});
 
-    // SOURCE IMAGE 2: POSE_REFERENCE (if provided)
     if (input.poseReferenceDataUri) {
       promptParts.push({
-        text: `\n\n**SOURCE IMAGE 2: POSE_REFERENCE**\nThe person in the final image must adopt this exact pose.`,
+        text: `\n\n**POSE_REFERENCE:** The generated person MUST adopt this exact pose. This overrides the pose from USER_PHOTO.`,
       });
       promptParts.push({media: {url: input.poseReferenceDataUri}});
     }
 
-    // SOURCE IMAGE 3: OUTFIT_TOP
     promptParts.push({
-      text: `\n\n**SOURCE IMAGE 3: OUTFIT_TOP**\nThe person must wear this exact top.`,
+      text: `\n\n**OUTFIT_TOP:** The person must wear this exact top.`,
     });
     promptParts.push({media: {url: input.topClothingDataUri}});
 
-    // SOURCE IMAGE 4: OUTFIT_BOTTOM
     promptParts.push({
-      text: `\n\n**SOURCE IMAGE 4: OUTFIT_BOTTOM**\nThe person must wear these exact bottoms.`,
+      text: `\n\n**OUTFIT_BOTTOM:** The person must wear these exact bottoms.`,
     });
     promptParts.push({media: {url: input.bottomClothingDataUri}});
 
-    // SOURCE IMAGE 5: OUTFIT_SHOES (if provided)
     if (input.shoeDataUri) {
       promptParts.push({
-        text: `\n\n**SOURCE IMAGE 5: OUTFIT_SHOES**\nThe person must wear these exact shoes.`,
+        text: `\n\n**OUTFIT_SHOES:** The person must wear these exact shoes.`,
       });
       promptParts.push({media: {url: input.shoeDataUri}});
     }
 
-    // Final Execution Parameters & Confirmation
     promptParts.push({
-      text: `\n\n**FINAL EXECUTION PARAMETERS:**
-- **Model Identity:** A ${input.gender}${input.modelHeight ? ` who is ${input.modelHeight} tall` : ''}.
-- **Background:** Solid, neutral grey studio background. No other objects or scenery.
-- **Quality:** 4K, ultra-realistic photograph.
-- **AVOID:** Do not change the face. Do not crop the image. Do not generate a different person.
+      text: `\n\n**FINAL EXECUTION COMMANDS & CRITICAL REMINDER:**
+- **Model Identity:** Generate a ${input.gender}${input.modelHeight ? ` of ${input.modelHeight} height` : ''}.
+- **Background:** Use a plain, solid, neutral grey studio background. No props, scenery, or other objects.
+- **Image Quality:** The output must be a 4K, ultra-realistic photograph.
 
-**PRE-GENERATION CHECKLIST (Confirm YES):**
-1. Is the face identical to USER_PHOTO? YES.
-2. Is the pose identical to the pose reference (or USER_PHOTO if no reference is given)? YES.
-3. Is it a full-body shot with no cropping of head or feet? YES.
+**REITERATING THE NON-NEGOTIABLE RULES:**
+1.  **FACE IS IDENTICAL:** The generated face must be an exact match to the USER_PHOTO. NO CHANGES.
+2.  **FULL BODY IN FRAME:** The entire body, from head to toe, MUST be visible and not cropped. NO EXCEPTIONS.
 
-Generate the image now.`,
+Generate the image now, strictly adhering to all rules.
+`,
     });
 
     const response = await ai.generate({

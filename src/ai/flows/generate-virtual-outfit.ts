@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Generates a photorealistic image of the user wearing the selected outfit.
@@ -118,12 +117,13 @@ You will now be given the source images. Use them to construct the final photogr
     
     // 4. Final Details & Confirmation
     promptParts.push({ text: `\n\n**4. Final Image Requirements:**
+- **Framing & Composition:** The image **MUST** be a full-body photograph. The subject must be centered. Ensure there is ample space around the entire body, from the top of the head to below the feet. **No part of the person, especially the head or feet, must be cut off by the edge of the image.** This is a non-negotiable rule.
 - **Model Details:** The model is a ${input.gender}${input.modelHeight ? ` and is ${input.modelHeight} tall` : ''}.
 - **Background:** The background **MUST** be a plain, neutral grey studio background. No other objects or distractions.
 - **Realism:** The final image must be indistinguishable from a real photograph.
 
 **CONFIRMATION OF CRITICAL RULES:**
-1. Is the final image a **full-body shot** with head and feet fully visible? YES.
+1. Is the final image a **full-body shot** with head and feet fully visible and not cropped? YES.
 2. Is the face **identical** to the face in the 'User Photo'? YES.`
     });
 

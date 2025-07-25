@@ -1,272 +1,259 @@
+
 "use client";
 
 import Image from 'next/image';
 import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  Download,
   Footprints,
-  Loader2,
+  History,
   Move,
   Plus,
-  RefreshCw,
-  Share2,
   Shirt,
-  Sparkles,
   Trash2,
   User,
-  UserRound,
   X,
-  ZoomIn,
-  ZoomOut,
-  Info
+  Zap,
+  Camera,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { useRouter } from 'next/navigation';
 
-import { generateOutfitAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn, resizeImage } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label";
+import { useGenerationCount } from '@/hooks/use-generation-count';
+import { Badge } from '@/components/ui/badge';
+import CountdownTimer from '@/components/CountdownTimer';
+import { Onboarding } from '@/components/Onboarding';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-// --- Onboarding Components ---
-
-const IntroScreen = ({ onFinished }: { onFinished: () => void }) => {
-  React.useEffect(() => {
-    const timer = setTimeout(() => onFinished(), 3500);
-    return () => clearTimeout(timer);
-  }, [onFinished]);
-
-  const title = "DRESSX";
-  const sentence = {
-    hidden: { opacity: 1 },
-    visible: {
-      opacity: 1,
-      transition: {
-        delay: 0.5,
-        staggerChildren: 0.08,
-      },
-    },
-  };
-  const letter = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0 },
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center h-screen w-screen bg-black">
-      <motion.h1
-        className="text-7xl md:text-9xl font-black text-white text-shadow tracking-tighter"
-        variants={sentence}
-        initial="hidden"
-        animate="visible"
-      >
-        {title.split("").map((char, index) => (
-          <motion.span key={char + "-" + index} variants={letter}>
-            {char}
-          </motion.span>
-        ))}
-      </motion.h1>
-      <motion.p 
-        className="text-xl text-muted-foreground mt-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 1.5 }}
-      >
-        Your virtual AI closet.
-      </motion.p>
-    </div>
-  );
-};
-
-
-const OnboardingFlow = ({ onFinished }: { onFinished: () => void }) => {
-  const [step, setStep] = React.useState(1);
-
-  const steps = [
-    {
-      icon: <Sparkles className="h-16 w-16 text-primary" />,
-      title: "Welcome to DRESSX",
-      description: "See yourself in any outfit from your digital closet instantly. Discover new styles, save time, and have fun with your wardrobe, all powered by AI.",
-      buttonText: "Next"
-    },
-    {
-      icon: <Info className="h-16 w-16 text-primary" />,
-      title: "How It Works",
-      description: "Simply upload a clear photo of yourself, add items to your virtual wardrobe, and select an outfit. Our AI will generate a realistic image of you wearing it.",
-      buttonText: "Get Started"
-    }
-  ];
-
-  const currentStep = steps[step - 1];
-
-  const handleNext = () => {
-    if (step < steps.length) {
-      setStep(s => s + 1);
-    } else {
-      onFinished();
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center h-screen w-screen p-4 bg-background">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          <Card className="glassmorphic text-center">
-            <CardHeader>
-              <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
-                {currentStep.icon}
-              </div>
-              <CardTitle className="text-3xl">{currentStep.title}</CardTitle>
-              <CardDescription className="text-base text-foreground/80 pt-2">
-                {currentStep.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {step === 2 && (
-                 <Alert variant="default" className="text-left bg-muted/50 border-accent/50">
-                  <Info className="h-4 w-4 text-accent" />
-                  <AlertTitle className="text-accent">A Friendly Note on AI</AlertTitle>
-                  <AlertDescription>
-                    Our AI is powerful, but not always perfect. Face and pose replication is usually accurate, but occasional quirks can happen. We appreciate your understanding as we continue to improve!
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-            <CardFooter className="flex-col gap-4">
-               <Button size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleNext}>
-                 {currentStep.buttonText} <ArrowRight className="ml-2"/>
-              </Button>
-              <div className="flex justify-center gap-2">
-                  {steps.map((_, i) => (
-                      <div key={i} className={cn("h-2 w-2 rounded-full transition-all", i + 1 === step ? "bg-primary w-4" : "bg-muted")}></div>
-                  ))}
-              </div>
-            </CardFooter>
-          </Card>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-};
-
-
-// --- Main App ---
 
 interface ClothingItem {
   id: string;
   dataUri: string;
 }
 
-const readFileAsDataURL = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+type PageStatus = 'loading' | 'onboarding' | 'ready';
+type Race = 'None' | 'Black American' | 'Black' | 'Asian' | 'Indian' | 'White';
+type BodyType = 'fat' | 'chubby' | 'slim' | 'fit' | 'muscular' | 'model' | 'bulky' | 'shredded';
+type Background = 'Neutral Gray Studio' | 'Black Studio' |'Outdoor City Street' | 'Beach Sunset' | 'Forest Path' | 'Cozy Cafe' | 'Urban Rooftop' | 'Minimalist White Room' | 'Vibrant Graffiti Wall';
+type Effect = 'None' | 'Movie-Like' | 'Golden Hour' | 'Dreamy' | 'VHS' | 'Black & White' | 'Sepia Tone' | 'High Contrast' | 'Infrared Glow';
+type Framing = 'full-body' | 'half-body' | 'portrait';
 
-const resizeImage = (
-  dataUri: string,
-  maxWidth: number = 1024,
-  maxHeight: number = 1024
-): Promise<string> => {
-  return new Promise(resolve => {
-    const img = new window.Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
+const ONBOARDING_KEY = 'dressx_onboarding_complete_v1';
+const GENERATION_INPUT_KEY = 'dressx_generation_input';
+const WORKSPACE_STATE_KEY = 'dressx_workspace_state_v4'; // Incremented version
 
-      if (width > height) {
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
-      } else {
-        resolve(dataUri);
-      }
-    };
-    img.src = dataUri;
-  });
-};
-
-function MainApp() {
+export default function DressXPage() {
   const { toast } = useToast();
+  const router = useRouter();
+
+  const { generationsLeft, resetsAt, error: generationCountError } = useGenerationCount();
+  
+  const [useCustomPhoto, setUseCustomPhoto] = React.useState<boolean>(false);
   const [userPhoto, setUserPhoto] = React.useState<ClothingItem | null>(null);
   const [posePhoto, setPosePhoto] = React.useState<ClothingItem | null>(null);
+  const [race, setRace] = React.useState<Race>('None');
+  const [gender, setGender] = React.useState<'male' | 'female'>('male');
+  const [bodyType, setBodyType] = React.useState<BodyType>('fit');
+  const [view, setView] = React.useState<'front' | 'back'>('front');
+  const [framing, setFraming] = React.useState<Framing>('full-body');
+  const [background, setBackground] = React.useState<Background>('Neutral Gray Studio');
+  const [effect, setEffect] = React.useState<Effect>('None');
+
   const [tops, setTops] = React.useState<ClothingItem[]>([]);
   const [bottoms, setBottoms] = React.useState<ClothingItem[]>([]);
+  const [dresses, setDresses] = React.useState<ClothingItem[]>([]);
   const [shoes, setShoes] = React.useState<ClothingItem[]>([]);
+
   const [selectedTop, setSelectedTop] = React.useState<string | null>(null);
-  const [selectedBottom, setSelectedBottom] = React.useState<string | null>(
-    null
-  );
+  const [selectedBottom, setSelectedBottom] = React.useState<string | null>(null);
+  const [selectedDress, setSelectedDress] = React.useState<string | null>(null);
   const [selectedShoe, setSelectedShoe] = React.useState<string | null>(null);
-  const [modelHeight, setModelHeight] = React.useState('');
-  const [gender, setGender] = React.useState<'male' | 'female'>('male');
-
-  const [generatedOutfit, setGeneratedOutfit] = React.useState<string | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [loadingStep, setLoadingStep] = React.useState('');
-  const [isShareSupported, setIsShareSupported] = React.useState(false);
-
-  const imageContainerRef = React.useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = React.useState({ scale: 1, x: 0, y: 0 });
-  const [isPanning, setIsPanning] = React.useState(false);
-  const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
+  
+  const [pageStatus, setPageStatus] = React.useState<PageStatus>('loading');
 
   const userPhotoInputRef = React.useRef<HTMLInputElement>(null);
   const poseInputRef = React.useRef<HTMLInputElement>(null);
   const topInputRef = React.useRef<HTMLInputElement>(null);
   const bottomInputRef = React.useRef<HTMLInputElement>(null);
+  const dressInputRef = React.useRef<HTMLInputElement>(null);
   const shoeInputRef = React.useRef<HTMLInputElement>(null);
 
+  const handleHeaderClick = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(ONBOARDING_KEY);
+      window.location.reload();
+    }
+  };
+
   React.useEffect(() => {
-    if (navigator.canShare && navigator.canShare({ files: [new File([], '')] })) {
-      setIsShareSupported(true);
+    if (typeof window !== 'undefined') {
+      const onboardingComplete = sessionStorage.getItem(ONBOARDING_KEY) === 'true';
+      if (onboardingComplete) {
+        setPageStatus('loading');
+      } else {
+        setPageStatus('onboarding');
+      }
     }
   }, []);
 
-  const resetTransform = () => {
-    setTransform({ scale: 1, x: 0, y: 0 });
+  const handleOnboardingComplete = () => {
+    sessionStorage.setItem(ONBOARDING_KEY, 'true');
+    setPageStatus('ready');
+  };
+
+  const handleRestoreComplete = () => {
+    setPageStatus('ready');
+  };
+
+  // Restore state from localStorage on mount
+  React.useEffect(() => {
+    if (pageStatus !== 'ready') return;
+
+    try {
+      const savedStateJSON = localStorage.getItem(WORKSPACE_STATE_KEY);
+      if (savedStateJSON) {
+        const savedState = JSON.parse(savedStateJSON);
+        if (savedState.useCustomPhoto) setUseCustomPhoto(savedState.useCustomPhoto);
+        if (savedState.userPhoto) setUserPhoto(savedState.userPhoto);
+        if (savedState.posePhoto) setPosePhoto(savedState.posePhoto);
+        if (savedState.race) setRace(savedState.race);
+        if (savedState.gender) setGender(savedState.gender);
+        if (savedState.bodyType) setBodyType(savedState.bodyType);
+        if (savedState.view) setView(savedState.view);
+        if (savedState.framing) setFraming(savedState.framing);
+        if (savedState.background) setBackground(savedState.background);
+        if (savedState.effect) setEffect(savedState.effect);
+        if (savedState.tops) setTops(savedState.tops);
+        if (savedState.bottoms) setBottoms(savedState.bottoms);
+        if (savedState.dresses) setDresses(savedState.dresses);
+        if (savedState.shoes) setShoes(savedState.shoes);
+        if (savedState.selectedTop) setSelectedTop(savedState.selectedTop);
+        if (savedState.selectedBottom) setSelectedBottom(savedState.selectedBottom);
+        if (savedState.selectedDress) setSelectedDress(savedState.selectedDress);
+        if (savedState.selectedShoe) setSelectedShoe(savedState.selectedShoe);
+      }
+    } catch (error) {
+      console.error("Failed to restore workspace from localStorage", error);
+      toast({
+        variant: 'destructive',
+        title: 'Could Not Restore Workspace',
+        description: 'There was an issue loading your saved items. Your browser storage might be full or corrupted.',
+      });
+      localStorage.removeItem(WORKSPACE_STATE_KEY);
+    }
+  }, [pageStatus, toast]);
+
+  // Save state to localStorage on change
+  React.useEffect(() => {
+    if (pageStatus !== 'ready') return;
+
+    const workspaceState = {
+      useCustomPhoto,
+      userPhoto,
+      posePhoto,
+      race,
+      gender,
+      bodyType,
+      view,
+      framing,
+      background,
+      effect,
+      tops,
+      bottoms,
+      dresses,
+      shoes,
+      selectedTop,
+      selectedBottom,
+      selectedDress,
+      selectedShoe,
+    };
+
+    try {
+      localStorage.setItem(WORKSPACE_STATE_KEY, JSON.stringify(workspaceState));
+    } catch (error) {
+      console.error("Failed to save workspace to localStorage", error);
+      toast({
+        variant: 'destructive',
+        title: 'Could Not Save Wardrobe',
+        description: 'Your browser storage is full. Please remove some items to save new ones.',
+        duration: 5000,
+      });
+    }
+  }, [
+    useCustomPhoto,
+    userPhoto,
+    posePhoto,
+    race,
+    gender,
+    bodyType,
+    view,
+    framing,
+    background,
+    effect,
+    tops,
+    bottoms,
+    dresses,
+    shoes,
+    selectedTop,
+    selectedBottom,
+    selectedDress,
+    selectedShoe,
+    pageStatus,
+    toast,
+  ]);
+  
+  // Effect to clear user photo if custom photo is toggled off
+  React.useEffect(() => {
+    if (!useCustomPhoto) {
+      setUserPhoto(null);
+    }
+  }, [useCustomPhoto]);
+
+  const handleClearWorkspace = () => {
+    setUseCustomPhoto(false);
+    setUserPhoto(null);
+    setPosePhoto(null);
+    setRace('None');
+    setGender('male');
+    setBodyType('fit');
+    setView('front');
+    setFraming('full-body');
+    setBackground('Neutral Gray Studio');
+    setEffect('None');
+    setTops([]);
+    setBottoms([]);
+    setDresses([]);
+    setShoes([]);
+    setSelectedTop(null);
+    setSelectedBottom(null);
+    setSelectedDress(null);
+    setSelectedShoe(null);
+    
+    try {
+        localStorage.removeItem(WORKSPACE_STATE_KEY);
+    } catch (error) {
+        console.error("Could not clear workspace from localStorage", error);
+    }
+
+    toast({
+        title: "Workspace Cleared",
+        description: "You can start fresh now!",
+    });
   };
 
   const handleFileUpload =
@@ -274,228 +261,135 @@ function MainApp() {
       setter: React.Dispatch<React.SetStateAction<any>>,
       isMultiple: boolean = false
     ) =>
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files;
-      if (!files) return;
+      async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files) return;
 
-      try {
-        const newItems = await Promise.all(
-          Array.from(files).map(async file => {
-            const dataUri = await readFileAsDataURL(file);
-            const resizedDataUri = await resizeImage(dataUri);
-            return {
-              id: uuidv4(),
-              dataUri: resizedDataUri,
-            };
-          })
-        );
+        try {
+          const newItems = await Promise.all(
+            Array.from(files).map(async file => {
+              const resizedDataUri = await resizeImage(file);
+              return {
+                id: uuidv4(),
+                dataUri: resizedDataUri,
+              };
+            })
+          );
 
-        if (isMultiple) {
-          setter((prev: any) => [...prev, ...newItems]);
-        } else {
-          setter(newItems[0]);
+          if (isMultiple) {
+            setter((prev: any) => [...prev, ...newItems]);
+          } else {
+            setter(newItems[0]);
+          }
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: error instanceof Error ? error.message : "There was an error processing the file.",
+          });
+        } finally {
+          event.target.value = '';
         }
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: 'There was an error reading the file.',
-        });
-      } finally {
-        event.target.value = '';
-      }
-    };
+      };
 
-  const handleGenerateOutfit = async () => {
-    if (!userPhoto || !selectedTop || !selectedBottom) {
+  const handleGenerateOutfit = () => {
+    if (generationsLeft !== null && generationsLeft <= 0) {
+      toast({
+          variant: 'destructive',
+          title: 'No Generations Left',
+          description: 'Sorry, no generations left for today! Please check back tomorrow.',
+      });
+      return;
+    }
+
+    if (useCustomPhoto && !userPhoto) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Photo',
+        description: 'Please select a photo of yourself to use the custom model feature.',
+      });
+      return;
+    }
+
+    if (!useCustomPhoto && race === 'None') {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Race',
+        description: 'Please select a race for the stock model.',
+      });
+      return;
+    }
+    
+    if (!selectedTop && !selectedDress) {
       toast({
         variant: 'destructive',
         title: 'Missing Items',
-        description: 'Please select a photo of yourself, a top, and a bottom.',
+        description: 'Please select either a top or a dress.',
       });
       return;
     }
 
-    setIsLoading(true);
-    setGeneratedOutfit(null);
-    setLoadingStep('Generating your masterpiece...');
-    resetTransform();
 
     const topItem = tops.find(t => t.id === selectedTop);
     const bottomItem = bottoms.find(b => b.id === selectedBottom);
+    const dressItem = dresses.find(d => d.id === selectedDress);
     const shoeItem = shoes.find(s => s.id === selectedShoe);
 
-    if (!topItem || !bottomItem) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not find selected clothing items.',
-      });
-      setIsLoading(false);
-      return;
-    }
+    const generationInput = {
+      userPhotoDataUri: useCustomPhoto ? userPhoto?.dataUri : undefined,
+      race: race,
+      gender: gender,
+      bodyType: bodyType,
+      view: view,
+      framing: framing,
+      background: background,
+      effect: effect,
+      topClothingDataUri: dressItem ? undefined : topItem?.dataUri,
+      bottomClothingDataUri: dressItem ? undefined : bottomItem?.dataUri,
+      dressDataUri: dressItem?.dataUri,
+      shoeDataUri: shoeItem?.dataUri,
+      poseReferenceDataUri: posePhoto?.dataUri,
+    };
 
     try {
-      const result = await generateOutfitAction({
-        userPhotoDataUri: userPhoto.dataUri,
-        topClothingDataUri: topItem.dataUri,
-        bottomClothingDataUri: bottomItem.dataUri,
-        shoeDataUri: shoeItem?.dataUri,
-        poseReferenceDataUri: posePhoto?.dataUri,
-        modelHeight: modelHeight,
-        gender: gender,
-      });
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      
-      if (result.generatedOutfitDataUri) {
-        setGeneratedOutfit(result.generatedOutfitDataUri);
-      } else {
-        throw new Error('Image generation failed to return an image.');
-      }
-      
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'An unknown error occurred during outfit generation.';
+      sessionStorage.setItem(GENERATION_INPUT_KEY, JSON.stringify(generationInput));
+      router.push('/result');
+    } catch (e) {
+      console.error("Error saving generation input to session storage", e);
       toast({
         variant: 'destructive',
-        title: 'Generation Failed',
-        description: errorMessage,
-      });
-    } finally {
-      setIsLoading(false);
-      setLoadingStep('');
-    }
-  };
-
-  const handleDownload = () => {
-    if (!generatedOutfit) return;
-    const link = document.createElement('a');
-    link.href = generatedOutfit;
-    link.download = 'dressx-outfit.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleShare = async () => {
-    if (!generatedOutfit || !isShareSupported) {
-       toast({
-        variant: 'destructive',
-        title: 'Sharing Not Supported',
-        description: 'Your browser does not support sharing files.',
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(generatedOutfit);
-      const blob = await response.blob();
-      const file = new File([blob], 'dressx-outfit.png', {
-        type: blob.type,
-      });
-
-      await navigator.share({
-        title: 'My New Outfit from DRESSX!',
-        text: 'Check out this virtual outfit I created with DRESSX.',
-        files: [file],
-      });
-    } catch (error) {
-       console.error("Share error:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Sharing Failed',
-        description: 'Could not share the image.',
+        title: 'Could Not Start Generation',
+        description: 'There was an error preparing your outfit. Your browser storage might be full.',
       });
     }
-  };
-
-  const handleStartOver = () => {
-    setGeneratedOutfit(null);
-    resetTransform();
   };
 
   const removeItem = (
     id: string,
-    type: 'top' | 'bottom' | 'shoe' | 'user' | 'pose'
+    type: 'top' | 'bottom' | 'dress' | 'shoe' | 'user' | 'pose'
   ) => {
-    if (type === 'user') {
-      setUserPhoto(null);
-    } else if (type === 'pose') {
-      setPosePhoto(null);
-    } else if (type === 'top') {
+    if (type === 'user') setUserPhoto(null);
+    else if (type === 'pose') setPosePhoto(null);
+    else if (type === 'top') {
       setTops(tops.filter(item => item.id !== id));
       if (selectedTop === id) setSelectedTop(null);
     } else if (type === 'bottom') {
       setBottoms(bottoms.filter(item => item.id !== id));
       if (selectedBottom === id) setSelectedBottom(null);
+    } else if (type === 'dress') {
+      setDresses(dresses.filter(item => item.id !== id));
+      if (selectedDress === id) setSelectedDress(null);
     } else {
       setShoes(shoes.filter(item => item.id !== id));
       if (selectedShoe === id) setSelectedShoe(null);
     }
   };
-  
-  // Pan and Zoom handlers
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (!imageContainerRef.current) return;
-
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const zoomFactor = 1.1;
-    const newScale = e.deltaY < 0 ? transform.scale * zoomFactor : transform.scale / zoomFactor;
-    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
-
-    const newX = mouseX - (mouseX - transform.x) * (clampedScale / transform.scale);
-    const newY = mouseY - (mouseY - transform.y) * (clampedScale / transform.scale);
-    
-    setTransform({ scale: clampedScale, x: newX, y: newY });
-  };
-  
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsPanning(true);
-    setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-  };
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isPanning) return;
-    e.preventDefault();
-    setTransform(t => ({...t, x: e.clientX - panStart.x, y: e.clientY - panStart.y}));
-  };
-  
-  const handleMouseUpOrLeave = () => {
-    setIsPanning(false);
-  };
-
-  const handleZoomButtonClick = (direction: 'in' | 'out') => {
-    if (!imageContainerRef.current) return;
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    
-    const zoomFactor = 1.2;
-    const newScale = direction === 'in' ? transform.scale * zoomFactor : transform.scale / zoomFactor;
-    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
-    
-    const newX = centerX - (centerX - transform.x) * (clampedScale / transform.scale);
-    const newY = centerY - (centerY - transform.y) * (clampedScale / transform.scale);
-
-    setTransform({ scale: clampedScale, x: newX, y: newY });
-  }
-
-  const MotionButton = motion(Button);
 
   const renderWardrobeItems = (
     items: ClothingItem[],
     selectedId: string | null,
     onSelect: (id: string) => void,
-    type: 'top' | 'bottom' | 'shoe'
+    type: 'top' | 'bottom' | 'dress' | 'shoe'
   ) => (
     <div className="grid grid-cols-3 gap-2">
       {items.map(item => (
@@ -517,430 +411,402 @@ function MainApp() {
               className="object-cover w-full h-full"
             />
           </button>
-          <MotionButton
+          <Button
             size="icon"
             variant="destructive"
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => removeItem(item.id, type)}
-            initial={{scale: 0, opacity: 0}}
-            animate={{scale: 1, opacity: 1}}
-            exit={{scale: 0, opacity: 0}}
+            onClick={(e) => { e.stopPropagation(); removeItem(item.id, type); }}
           >
             <X className="h-4 w-4" />
-          </MotionButton>
+          </Button>
         </motion.div>
       ))}
     </div>
   );
 
-  const isReadyToGenerate = userPhoto && selectedTop && selectedBottom;
+  const handleSelectTop = (id: string) => {
+    setSelectedTop(id);
+    setSelectedDress(null);
+  };
+  const handleSelectBottom = (id: string) => {
+    setSelectedBottom(id);
+    setSelectedDress(null);
+  };
+  const handleSelectDress = (id: string) => {
+    setSelectedDress(id);
+    setSelectedTop(null);
+    setSelectedBottom(null);
+  };
+
+  const isReadyToGenerate = (!useCustomPhoto || userPhoto) && (selectedTop || selectedDress) && (!useCustomPhoto ? race !== 'None' : true);
+
+  if (pageStatus === 'loading') {
+    return <Onboarding onComplete={handleRestoreComplete} introOnly={true} />;
+  }
+  
+  if (pageStatus === 'onboarding') {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   return (
-    <div className="flex flex-col md:flex-row md:h-screen bg-transparent bg-grid-zinc-700/[0.2]">
-      <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
-      <input
-        type="file"
-        ref={userPhotoInputRef}
-        onChange={handleFileUpload(setUserPhoto)}
-        accept="image/*"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={poseInputRef}
-        onChange={handleFileUpload(setPosePhoto)}
-        accept="image/*"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={topInputRef}
-        onChange={handleFileUpload(setTops, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
-      <input
-        type="file"
-        ref={bottomInputRef}
-        onChange={handleFileUpload(setBottoms, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
-      <input
-        type="file"
-        ref={shoeInputRef}
-        onChange={handleFileUpload(setShoes, true)}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
+    <div className="flex flex-col md:flex-row md:h-screen bg-background">
+      <input type="file" ref={userPhotoInputRef} onChange={handleFileUpload(setUserPhoto)} accept="image/*" className="hidden" />
+      <input type="file" ref={poseInputRef} onChange={handleFileUpload(setPosePhoto)} accept="image/*" className="hidden" />
+      <input type="file" ref={topInputRef} onChange={handleFileUpload(setTops, true)} accept="image/*" className="hidden" multiple />
+      <input type="file" ref={bottomInputRef} onChange={handleFileUpload(setBottoms, true)} accept="image/*" className="hidden" multiple />
+      <input type="file" ref={dressInputRef} onChange={handleFileUpload(setDresses, true)} accept="image/*" className="hidden" multiple />
+      <input type="file" ref={shoeInputRef} onChange={handleFileUpload(setShoes, true)} accept="image/*" className="hidden" multiple />
 
-      <motion.aside 
-        initial={{ x: -384 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.7, ease: "easeInOut" }}
-        className="w-full md:w-96 glassmorphic border-r p-4 flex flex-col gap-6 overflow-y-auto"
+      <aside
+        className="w-full md:w-96 bg-card/60 border-r flex flex-col"
       >
-        <header>
-          <h1 className="text-2xl font-bold text-primary">DRESSX</h1>
-          <p className="text-muted-foreground">
-            Your AI-powered virtual closet.
-          </p>
-        </header>
+        <div className="sticky top-0 z-10 p-4 border-b bg-card/80 backdrop-blur-sm">
+          <header className="flex justify-between items-center flex-wrap">
+            <button onClick={handleHeaderClick} className="text-left group cursor-pointer mb-2 sm:mb-0">
+              <h1 className="text-2xl font-bold text-foreground animate-pulse-glow">DRESSX</h1>
+              <p className="text-muted-foreground">
+                Your AI-powered virtual closet.
+              </p>
+            </button>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {generationsLeft !== null && resetsAt ? (
+                <>
+                  <Badge variant="outline" className="text-sm py-1 px-3 border-accent/50">
+                    <Zap className="h-4 w-4 mr-2 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold text-foreground">{generationsLeft}</span>
+                    <span className="text-muted-foreground ml-1.5">left</span>
+                  </Badge>
+                  <CountdownTimer resetsAt={resetsAt} />
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-[28px] w-[80px] rounded-full" />
+                  <Skeleton className="h-[28px] w-[90px] rounded-full" />
+                </>
+              )}
+              <Button variant="outline" size="icon" onClick={() => router.push('/history')} title="History">
+                <History className="h-5 w-5" />
+              </Button>
+              <Button variant="destructive" size="icon" onClick={handleClearWorkspace} title="Clear Workspace">
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+        </div>
 
-        <div className="space-y-4">
-          <h2 className="font-semibold">1. Your Photo</h2>
-          {userPhoto ? (
-            <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
-              <Image
-                src={userPhoto.dataUri}
-                alt="User"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  onClick={() => removeItem(userPhoto.id, 'user')}
+        <div className="p-4 flex flex-col gap-6 overflow-y-auto">
+          <div className="space-y-4">
+            <h2 className="font-semibold">1. Your Model</h2>
+            
+            <div className="flex items-center space-x-2">
+              <Switch id="custom-photo-switch" checked={useCustomPhoto} onCheckedChange={setUseCustomPhoto} />
+              <Label htmlFor="custom-photo-switch">Use Custom Photo</Label>
+            </div>
+
+            {useCustomPhoto ? (
+              userPhoto ? (
+                <div className="relative group w-full aspect-[4/5] rounded-lg overflow-hidden">
+                  <Image
+                    src={userPhoto.dataUri}
+                    alt="User"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="destructive"
+                      onClick={() => removeItem(userPhoto.id, 'user')}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Change Photo
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => userPhotoInputRef.current?.click()}
+                  className="w-full aspect-[4/5] rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Change Photo
+                  <User className="h-10 w-10 text-muted-foreground" />
+                  <span className="mt-2 text-sm font-medium">Add Photo</span>
+                </button>
+              )
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Race</Label>
+                    <Select value={race} onValueChange={(value: Race) => setRace(value)}>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select race" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Black American">Black American</SelectItem>
+                        <SelectItem value="Black">Black</SelectItem>
+                        <SelectItem value="Asian">Asian</SelectItem>
+                        <SelectItem value="Indian">Indian</SelectItem>
+                        <SelectItem value="White">White</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Body Type</Label>
+                    <Select value={bodyType} onValueChange={(value: BodyType) => setBodyType(value)}>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select body type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="slim">Slim</SelectItem>
+                          <SelectItem value="fit">Fit</SelectItem>
+                          <SelectItem value="muscular">Muscular</SelectItem>
+                          <SelectItem value="shredded">Shredded</SelectItem>
+                          <SelectItem value="model">Model</SelectItem>
+                          <SelectItem value="chubby">Chubby</SelectItem>
+                          <SelectItem value="fat">Fat</SelectItem>
+                          <SelectItem value="bulky">Bulky</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Gender</Label>
+              <RadioGroup
+                value={gender}
+                onValueChange={(value: 'male' | 'female') => setGender(value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="r1" />
+                  <Label htmlFor="r1">Male</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="r2" />
+                  <Label htmlFor="r2">Female</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label>View</Label>
+              <RadioGroup
+                value={view}
+                onValueChange={(value: 'front' | 'back') => setView(value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="front" id="v1" />
+                  <Label htmlFor="v1">Front View</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="back" id="v2" />
+                  <Label htmlFor="v2">Back View</Label>
+                </div>
+              </RadioGroup>
+            </div>
+             <div className="space-y-2">
+              <Label>Framing</Label>
+              <RadioGroup
+                value={framing}
+                onValueChange={(value: Framing) => setFraming(value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="full-body" id="f1" />
+                  <Label htmlFor="f1">Full Body</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="half-body" id="f2" />
+                  <Label htmlFor="f2">Half Body</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="portrait" id="f3" />
+                  <Label htmlFor="f3">Portrait</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+              <h2 className="font-semibold">2. Scene &amp; Style</h2>
+              <div className="space-y-2">
+                  <Label>Background</Label>
+                  <Select value={background} onValueChange={(value: Background) => setBackground(value)}>
+                      <SelectTrigger>
+                      <SelectValue placeholder="Select background" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Neutral Gray Studio">Neutral Gray Studio</SelectItem>
+                        <SelectItem value="Black Studio">Black Studio</SelectItem>
+                        <SelectItem value="Outdoor City Street">Outdoor City Street</SelectItem>
+                        <SelectItem value="Beach Sunset">Beach Sunset</SelectItem>
+                        <SelectItem value="Forest Path">Forest Path</SelectItem>
+                        <SelectItem value="Cozy Cafe">Cozy Cafe</SelectItem>
+                        <SelectItem value="Urban Rooftop">Urban Rooftop</SelectItem>
+                        <SelectItem value="Minimalist White Room">Minimalist White Room</SelectItem>
+                        <SelectItem value="Vibrant Graffiti Wall">Vibrant Graffiti Wall</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
+               <div className="space-y-2">
+                  <Label>Effect</Label>
+                  <Select value={effect} onValueChange={(value: Effect) => setEffect(value)}>
+                      <SelectTrigger>
+                      <SelectValue placeholder="Select effect" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Movie-Like">Movie-Like</SelectItem>
+                        <SelectItem value="Golden Hour">Golden Hour</SelectItem>
+                        <SelectItem value="Dreamy">Dreamy</SelectItem>
+                        <SelectItem value="VHS">VHS</SelectItem>
+                        <SelectItem value="Black & White">Black & White</SelectItem>
+                        <SelectItem value="Sepia Tone">Sepia Tone</SelectItem>
+                        <SelectItem value="High Contrast">High Contrast</SelectItem>
+                        <SelectItem value="Infrared Glow">Infrared Glow</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
+          </div>
+
+
+          <div className="space-y-4">
+            <h2 className="font-semibold">3. Your Wardrobe</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Tops</h3>
+                <Button size="sm" variant="outline" onClick={() => topInputRef.current?.click()}>
+                  <Plus className="h-4 w-4 mr-2" /> Add
                 </Button>
               </div>
+              {renderWardrobeItems(tops, selectedTop, handleSelectTop, 'top')}
             </div>
-          ) : (
-            <button
-              onClick={() => userPhotoInputRef.current?.click()}
-              className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-            >
-              <User className="h-10 w-10 text-muted-foreground" />
-              <span className="mt-2 text-sm font-medium">Add Photo</span>
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="font-semibold">2. Pose Reference (Optional)</h2>
-          {posePhoto ? (
-            <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
-              <Image
-                src={posePhoto.dataUri}
-                alt="Pose Reference"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  onClick={() => removeItem(posePhoto.id, 'pose')}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Change Pose
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Bottoms</h3>
+                <Button size="sm" variant="outline" onClick={() => bottomInputRef.current?.click()}>
+                  <Plus className="h-4 w-4 mr-2" /> Add
                 </Button>
               </div>
+              {renderWardrobeItems(bottoms, selectedBottom, handleSelectBottom, 'bottom')}
             </div>
-          ) : (
-            <button
-              onClick={() => poseInputRef.current?.click()}
-              className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-            >
-              <Move className="h-10 w-10 text-muted-foreground" />
-              <span className="mt-2 text-sm font-medium">
-                Add Pose Photo
-              </span>
-            </button>
-          )}
-        </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Dresses</h3>
+                <Button size="sm" variant="outline" onClick={() => dressInputRef.current?.click()}>
+                  <Plus className="h-4 w-4 mr-2" /> Add
+                </Button>
+              </div>
+              {renderWardrobeItems(dresses, selectedDress, handleSelectDress, 'dress')}
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Shoes (Optional)</h3>
+                <Button size="sm" variant="outline" onClick={() => shoeInputRef.current?.click()}>
+                  <Plus className="h-4 w-4 mr-2" /> Add
+                </Button>
+              </div>
+              {renderWardrobeItems(shoes, selectedShoe, setSelectedShoe, 'shoe')}
+            </div>
+          </div>
 
-        <div className="space-y-4">
-          <h2 className="font-semibold">3. Your Wardrobe</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Tops</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => topInputRef.current?.click()}
+          <div className="space-y-4">
+            <h2 className="font-semibold">4. Pose Reference (Optional)</h2>
+            {posePhoto ? (
+              <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
+                <Image
+                  src={posePhoto.dataUri}
+                  alt="Pose Reference"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="destructive"
+                    onClick={() => removeItem(posePhoto.id, 'pose')}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Change Pose
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => poseInputRef.current?.click()}
+                className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(tops, selectedTop, setSelectedTop, 'top')}
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Bottoms</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => bottomInputRef.current?.click()}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(
-              bottoms,
-              selectedBottom,
-              setSelectedBottom,
-              'bottom'
-            )}
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium">Shoes (Optional)</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => shoeInputRef.current?.click()}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add
-              </Button>
-            </div>
-            {renderWardrobeItems(
-              shoes,
-              selectedShoe,
-              setSelectedShoe,
-              'shoe'
+                <Move className="h-10 w-10 text-muted-foreground" />
+                <span className="mt-2 text-sm font-medium">
+                  Add Pose Photo
+                </span>
+              </button>
             )}
           </div>
         </div>
-
-        <div className="space-y-4">
-          <h2 className="font-semibold">4. Details</h2>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Gender</Label>
-            <RadioGroup
-              value={gender}
-              onValueChange={(value: 'male' | 'female') => setGender(value)}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="male" id="r-male" />
-                <Label htmlFor="r-male">Male</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="female" id="r-female" />
-                <Label htmlFor="r-female">Female</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Model Height (Optional)
-            </Label>
-            <Input
-              placeholder="e.g., 5ft 10in or 178cm"
-              value={modelHeight}
-              onChange={e => setModelHeight(e.target.value)}
-            />
-          </div>
-        </div>
-      </motion.aside>
+      </aside>
 
       <main className="flex-1 p-4 md:p-6 flex items-center justify-center relative">
-        <AnimatePresence mode="wait">
-        {isLoading ? (
-          <motion.div
-            key="loader"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="flex flex-col items-center justify-center gap-4 text-center"
+        <motion.div
+          key="placeholder"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-8 text-center max-w-lg"
+        >
+           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+             <div className="flex flex-col items-center gap-2">
+               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                {useCustomPhoto && userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
+               </div>
+               <p className="font-medium text-sm md:text-base">{useCustomPhoto ? "Your Photo" : "Model"}</p>
+             </div>
+             
+             <div className="flex flex-col items-center gap-2">
+               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                {selectedDress ? <Image src={dresses.find(d => d.id === selectedDress)!.dataUri} alt="Dress" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />)}
+               </div>
+               <p className="font-medium text-sm md:text-base">{selectedDress ? 'Selected Dress' : 'Selected Top'}</p>
+             </div>
+
+             <div className="flex flex-col items-center gap-2">
+               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                 {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <div className="text-muted-foreground h-10 w-10 md:h-12 md:w-12" />}
+               </div>
+               <p className="font-medium text-sm md:text-base">Selected Bottom</p>
+             </div>
+             <div className="flex flex-col items-center gap-2 md:col-start-2">
+               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
+               </div>
+               <p className="font-medium text-sm md:text-base">Shoes</p>
+             </div>
+           </div>
+          <Button
+            size="lg"
+            onClick={handleGenerateOutfit}
+            disabled={!isReadyToGenerate || generationsLeft === null || generationsLeft <= 0}
+            variant="accent"
           >
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium text-foreground/80 animate-pulse">
-              {loadingStep}
-            </p>
+            Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+          {!isReadyToGenerate && (
             <p className="text-sm text-muted-foreground">
-              This can take a few moments. Please be patient.
+              {useCustomPhoto && !userPhoto ? "Select your photo to begin." : ""}
+              {!useCustomPhoto && race === 'None' ? "Please select a race to begin." : ""}
+              {!selectedTop && !selectedDress ? " Select a top or dress to begin." : ""}
             </p>
-          </motion.div>
-        ) : generatedOutfit ? (
-          <motion.div
-            key="outfit-card"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-2xl"
-          >
-          <Card className="w-full glassmorphic">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="text-accent" />
-                Here's Your Look!
-              </CardTitle>
-              <CardDescription>
-                Pan and zoom, share, or download your new virtual outfit.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
-              <div
-                ref={imageContainerRef}
-                className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-muted/50 cursor-grab active:cursor-grabbing"
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUpOrLeave}
-                onMouseLeave={handleMouseUpOrLeave}
-              >
-                <Image
-                  src={generatedOutfit}
-                  alt="Generated Outfit"
-                  width={800}
-                  height={1067}
-                  className="w-full h-full object-contain transition-transform duration-200 pointer-events-none"
-                  style={{
-                    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-                    transformOrigin: '0 0',
-                  }}
-                  draggable={false}
-                />
-              </div>
-              <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-background/80 backdrop-blur-sm p-1 rounded-lg shadow-md">
-                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => handleZoomButtonClick('out')}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium w-12 text-center select-none">
-                  {(transform.scale * 100).toFixed(0)}%
-                </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => handleZoomButtonClick('in')}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={resetTransform}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end gap-2">
-              <Button variant="outline" onClick={handleStartOver}>
-                Start Over
-              </Button>
-              <Button onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" /> Download
-              </Button>
-              {isShareSupported && (
-                <Button onClick={handleShare}>
-                  <Share2 className="mr-2 h-4 w-4" /> Share
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="placeholder"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-8 text-center max-w-lg"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-                </div>
-                <p className="font-medium text-sm md:text-base">Your Photo</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-                </div>
-                <p className="font-medium text-sm md:text-base">Selected Top</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground h-10 w-10 md:h-12 md:w-12">
-                      <path d="M12 2v7.5"/><path d="m10 13-1.5 7.5"/><path d="M14 13l1.5 7.5"/><path d="M6 20.5c0-2 1.5-3.5 3.5-3.5h5c2 0 3.5 1.5 3.5 3.5v0c0 .8-.7 1.5-1.5 1.5h-9c-.8 0-1.5-.7-1.5-1.5v0Z"/>
-                    </svg>
-                  )}
-                </div>
-                <p className="font-medium text-sm md:text-base">Selected Bottom</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-                </div>
-                <p className="font-medium text-sm md:text-base">Shoes</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {posePhoto ? <Image src={posePhoto.dataUri} alt="Pose" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Move className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-                </div>
-                <p className="font-medium text-sm md:text-base">Pose</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  {gender === 'female' ? <UserRound className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-                </div>
-                <p className="font-medium text-sm md:text-base">Gender</p>
-              </div>
-            </div>
-            <MotionButton
-              size="lg"
-              onClick={handleGenerateOutfit}
-              disabled={!isReadyToGenerate || isLoading}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
-            </MotionButton>
-            {!isReadyToGenerate && (
-              <p className="text-sm text-muted-foreground">
-                Select a photo, top, and bottom to begin.
-              </p>
-            )}
-          </motion.div>
-        )}
-        </AnimatePresence>
+          )}
+          {generationsLeft !== null && generationsLeft <= 0 && (
+            <p className="text-sm text-destructive mt-2 font-semibold">
+              No generations left for today. Please try again tomorrow.
+            </p>
+          )}
+          {generationCountError && (
+            <p className="text-sm text-destructive mt-2 font-semibold">
+              {generationCountError}
+            </p>
+          )}
+        </motion.div>
       </main>
     </div>
   );
 }
 
-
-export default function DressXPage() {
-  const [appState, setAppState] = React.useState<'loading' | 'onboarding' | 'main'>('loading');
-
-  React.useEffect(() => {
-    const hasOnboarded = localStorage.getItem('dressx_onboarded');
-    if (hasOnboarded) {
-      setAppState('main');
-    } else {
-      // stay in loading state, IntroScreen will transition it
-    }
-  }, []);
-
-  const handleIntroFinish = () => {
-    setAppState('onboarding');
-  };
-
-  const handleOnboardingFinish = () => {
-    localStorage.setItem('dressx_onboarded', 'true');
-    setAppState('main');
-  };
-
-  if (appState === 'loading') {
-    return <IntroScreen onFinished={handleIntroFinish} />;
-  }
-
-  if (appState === 'onboarding') {
-    return <OnboardingFlow onFinished={handleOnboardingFinish} />;
-  }
-
-  return <MainApp />;
-}
+    

@@ -1,1 +1,1 @@
-import '@/ai/flows/generate-virtual-outfit.ts';
+import '@/ai/flows/generate-photorealistic-outfit.ts';

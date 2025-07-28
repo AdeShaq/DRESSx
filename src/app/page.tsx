@@ -16,6 +16,11 @@ import {
   X,
   Zap,
   Camera,
+  Users,
+  Swords,
+  FootprintsIcon,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
@@ -31,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import CountdownTimer from '@/components/CountdownTimer';
 import { Onboarding } from '@/components/Onboarding';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -47,15 +52,60 @@ interface ClothingItem {
 }
 
 type PageStatus = 'loading' | 'onboarding' | 'ready';
+type GenerationMode = 'stock' | 'custom' | 'clothing';
 type Race = 'None' | 'Black American' | 'Black' | 'Asian' | 'Indian' | 'White';
 type BodyType = 'fat' | 'chubby' | 'slim' | 'fit' | 'muscular' | 'model' | 'bulky' | 'shredded';
 type Background = 'Neutral Gray Studio' | 'Black Studio' |'Outdoor City Street' | 'Beach Sunset' | 'Forest Path' | 'Cozy Cafe' | 'Urban Rooftop' | 'Minimalist White Room' | 'Vibrant Graffiti Wall';
 type Effect = 'None' | 'Movie-Like' | 'Golden Hour' | 'Dreamy' | 'VHS' | 'Black & White' | 'Sepia Tone' | 'High Contrast' | 'Infrared Glow';
 type Framing = 'full-body' | 'half-body' | 'portrait';
+type View = 'front' | 'back' | 'three-quarters';
+type ViewAngle = 'Eye-Level' | 'Low Angle' | 'High Angle' | "Worm's-Eye View" | 'Overhead Shot' | 'Fisheye Lens';
+type Theme = 'light' | 'dark';
 
-const ONBOARDING_KEY = 'dressx_onboarding_complete_v1';
-const GENERATION_INPUT_KEY = 'dressx_generation_input';
-const WORKSPACE_STATE_KEY = 'dressx_workspace_state_v4'; // Incremented version
+interface ModelConfig {
+  id: string;
+  race: Race;
+  gender: 'male' | 'female';
+  bodyType: BodyType;
+  selectedTop: string | null;
+  selectedBottom: string | null;
+  selectedDress: string | null;
+  selectedShoe: string | null;
+  posePhoto: ClothingItem | null;
+}
+
+const ONBOARDING_KEY = 'dressx_onboarding_complete_v2'; 
+const GENERATION_INPUT_KEY = 'dressx_generation_input_v2';
+const WORKSPACE_STATE_KEY = 'dressx_workspace_state_v6'; // Incremented version
+const THEME_KEY = 'dressx_theme';
+
+const defaultModelConfig = (): ModelConfig => ({
+  id: uuidv4(),
+  race: 'None',
+  gender: 'male',
+  bodyType: 'fit',
+  selectedTop: null,
+  selectedBottom: null,
+  selectedDress: null,
+  selectedShoe: null,
+  posePhoto: null,
+});
+
+interface WorkspaceState {
+  generationMode: GenerationMode;
+  userPhoto: ClothingItem | null;
+  models: ModelConfig[];
+  view: View;
+  viewAngle: ViewAngle;
+  framing: Framing;
+  background: Background;
+  effect: Effect;
+  tops: ClothingItem[];
+  bottoms: ClothingItem[];
+  dresses: ClothingItem[];
+  shoes: ClothingItem[];
+  savedAt: number; // Timestamp
+}
 
 export default function DressXPage() {
   const { toast } = useToast();
@@ -63,13 +113,14 @@ export default function DressXPage() {
 
   const { generationsLeft, resetsAt, error: generationCountError } = useGenerationCount();
   
-  const [useCustomPhoto, setUseCustomPhoto] = React.useState<boolean>(false);
+  const [generationMode, setGenerationMode] = React.useState<GenerationMode>('stock');
   const [userPhoto, setUserPhoto] = React.useState<ClothingItem | null>(null);
-  const [posePhoto, setPosePhoto] = React.useState<ClothingItem | null>(null);
-  const [race, setRace] = React.useState<Race>('None');
-  const [gender, setGender] = React.useState<'male' | 'female'>('male');
-  const [bodyType, setBodyType] = React.useState<BodyType>('fit');
-  const [view, setView] = React.useState<'front' | 'back'>('front');
+  
+  const [models, setModels] = React.useState<ModelConfig[]>([defaultModelConfig()]);
+  const [activeModelTab, setActiveModelTab] = React.useState<string>(models[0].id);
+
+  const [view, setView] = React.useState<View>('front');
+  const [viewAngle, setViewAngle] = React.useState<ViewAngle>('Eye-Level');
   const [framing, setFraming] = React.useState<Framing>('full-body');
   const [background, setBackground] = React.useState<Background>('Neutral Gray Studio');
   const [effect, setEffect] = React.useState<Effect>('None');
@@ -78,20 +129,37 @@ export default function DressXPage() {
   const [bottoms, setBottoms] = React.useState<ClothingItem[]>([]);
   const [dresses, setDresses] = React.useState<ClothingItem[]>([]);
   const [shoes, setShoes] = React.useState<ClothingItem[]>([]);
-
-  const [selectedTop, setSelectedTop] = React.useState<string | null>(null);
-  const [selectedBottom, setSelectedBottom] = React.useState<string | null>(null);
-  const [selectedDress, setSelectedDress] = React.useState<string | null>(null);
-  const [selectedShoe, setSelectedShoe] = React.useState<string | null>(null);
   
+  const [theme, setTheme] = React.useState<Theme>('dark');
+
   const [pageStatus, setPageStatus] = React.useState<PageStatus>('loading');
 
   const userPhotoInputRef = React.useRef<HTMLInputElement>(null);
-  const poseInputRef = React.useRef<HTMLInputElement>(null);
+  const poseInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const topInputRef = React.useRef<HTMLInputElement>(null);
   const bottomInputRef = React.useRef<HTMLInputElement>(null);
   const dressInputRef = React.useRef<HTMLInputElement>(null);
   const shoeInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Theme management
+  React.useEffect(() => {
+    const savedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
+    const initialTheme = savedTheme || 'dark';
+    setTheme(initialTheme);
+  }, []);
+
+  React.useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  };
 
   const handleHeaderClick = () => {
     if (typeof window !== 'undefined') {
@@ -127,32 +195,47 @@ export default function DressXPage() {
     try {
       const savedStateJSON = localStorage.getItem(WORKSPACE_STATE_KEY);
       if (savedStateJSON) {
-        const savedState = JSON.parse(savedStateJSON);
-        if (savedState.useCustomPhoto) setUseCustomPhoto(savedState.useCustomPhoto);
-        if (savedState.userPhoto) setUserPhoto(savedState.userPhoto);
-        if (savedState.posePhoto) setPosePhoto(savedState.posePhoto);
-        if (savedState.race) setRace(savedState.race);
-        if (savedState.gender) setGender(savedState.gender);
-        if (savedState.bodyType) setBodyType(savedState.bodyType);
-        if (savedState.view) setView(savedState.view);
-        if (savedState.framing) setFraming(savedState.framing);
-        if (savedState.background) setBackground(savedState.background);
-        if (savedState.effect) setEffect(savedState.effect);
-        if (savedState.tops) setTops(savedState.tops);
-        if (savedState.bottoms) setBottoms(savedState.bottoms);
-        if (savedState.dresses) setDresses(savedState.dresses);
-        if (savedState.shoes) setShoes(savedState.shoes);
-        if (savedState.selectedTop) setSelectedTop(savedState.selectedTop);
-        if (savedState.selectedBottom) setSelectedBottom(savedState.selectedBottom);
-        if (savedState.selectedDress) setSelectedDress(savedState.selectedDress);
-        if (savedState.selectedShoe) setSelectedShoe(savedState.selectedShoe);
+        const savedState: WorkspaceState = JSON.parse(savedStateJSON);
+        
+        const now = new Date().getTime();
+        const twoDaysInMillis = 48 * 60 * 60 * 1000;
+        if (now - savedState.savedAt > twoDaysInMillis) {
+            localStorage.removeItem(WORKSPACE_STATE_KEY);
+            toast({
+                title: "Workspace Expired",
+                description: "Your saved wardrobe items have been cleared to start fresh!",
+            });
+            return;
+        }
+
+        setGenerationMode(savedState.generationMode ?? 'stock');
+        setUserPhoto(savedState.userPhoto ?? null);
+        setModels(savedState.models?.map(m => ({...defaultModelConfig(), ...m})) ?? [defaultModelConfig()]);
+        setView(savedState.view ?? 'front');
+        setViewAngle(savedState.viewAngle ?? 'Eye-Level');
+        setFraming(savedState.framing ?? 'full-body');
+        setBackground(savedState.background ?? 'Neutral Gray Studio');
+        setEffect(savedState.effect ?? 'None');
+        setTops(savedState.tops ?? []);
+        setBottoms(savedState.bottoms ?? []);
+        setDresses(savedState.dresses ?? []);
+        setShoes(savedState.shoes ?? []);
+        
+        // Ensure active tab is valid
+        if (savedState.models && savedState.models.length > 0) {
+            setActiveModelTab(savedState.models[0].id);
+        } else {
+            const newModel = defaultModelConfig();
+            setModels([newModel]);
+            setActiveModelTab(newModel.id);
+        }
       }
     } catch (error) {
       console.error("Failed to restore workspace from localStorage", error);
       toast({
         variant: 'destructive',
         title: 'Could Not Restore Workspace',
-        description: 'There was an issue loading your saved items. Your browser storage might be full or corrupted.',
+        description: 'There was an issue loading your saved items. Starting fresh.',
       });
       localStorage.removeItem(WORKSPACE_STATE_KEY);
     }
@@ -162,14 +245,12 @@ export default function DressXPage() {
   React.useEffect(() => {
     if (pageStatus !== 'ready') return;
 
-    const workspaceState = {
-      useCustomPhoto,
+    const workspaceState: WorkspaceState = {
+      generationMode,
       userPhoto,
-      posePhoto,
-      race,
-      gender,
-      bodyType,
+      models,
       view,
+      viewAngle,
       framing,
       background,
       effect,
@@ -177,10 +258,7 @@ export default function DressXPage() {
       bottoms,
       dresses,
       shoes,
-      selectedTop,
-      selectedBottom,
-      selectedDress,
-      selectedShoe,
+      savedAt: new Date().getTime(),
     };
 
     try {
@@ -190,48 +268,34 @@ export default function DressXPage() {
       toast({
         variant: 'destructive',
         title: 'Could Not Save Wardrobe',
-        description: 'Your browser storage is full. Please remove some items to save new ones.',
-        duration: 5000,
+        description: 'Your browser storage might be full. Please remove some items to save new ones.',
       });
     }
   }, [
-    useCustomPhoto,
-    userPhoto,
-    posePhoto,
-    race,
-    gender,
-    bodyType,
-    view,
-    framing,
-    background,
-    effect,
-    tops,
-    bottoms,
-    dresses,
-    shoes,
-    selectedTop,
-    selectedBottom,
-    selectedDress,
-    selectedShoe,
-    pageStatus,
-    toast,
+    generationMode, userPhoto, models, view, viewAngle, framing, background, effect,
+    tops, bottoms, dresses, shoes, pageStatus, toast
   ]);
   
   // Effect to clear user photo if custom photo is toggled off
   React.useEffect(() => {
-    if (!useCustomPhoto) {
+    if (generationMode !== 'custom') {
       setUserPhoto(null);
+    } 
+    if (generationMode === 'custom' || generationMode === 'clothing') {
+      const newModels = [models[0] || defaultModelConfig()];
+      setModels(newModels);
+      setActiveModelTab(newModels[0].id);
     }
-  }, [useCustomPhoto]);
+  }, [generationMode]);
 
   const handleClearWorkspace = () => {
-    setUseCustomPhoto(false);
+    const newModel = defaultModelConfig();
+    setGenerationMode('stock');
     setUserPhoto(null);
-    setPosePhoto(null);
-    setRace('None');
-    setGender('male');
-    setBodyType('fit');
+    setModels([newModel]);
+    setActiveModelTab(newModel.id);
     setView('front');
+    setViewAngle('Eye-Level');
     setFraming('full-body');
     setBackground('Neutral Gray Studio');
     setEffect('None');
@@ -239,10 +303,6 @@ export default function DressXPage() {
     setBottoms([]);
     setDresses([]);
     setShoes([]);
-    setSelectedTop(null);
-    setSelectedBottom(null);
-    setSelectedDress(null);
-    setSelectedShoe(null);
     
     try {
         localStorage.removeItem(WORKSPACE_STATE_KEY);
@@ -259,7 +319,8 @@ export default function DressXPage() {
   const handleFileUpload =
     (
       setter: React.Dispatch<React.SetStateAction<any>>,
-      isMultiple: boolean = false
+      isMultiple: boolean = false,
+      modelId?: string
     ) =>
       async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -275,8 +336,10 @@ export default function DressXPage() {
               };
             })
           );
-
-          if (isMultiple) {
+          
+          if (modelId) { // This is a pose photo for a specific model
+            updateModelConfig(modelId, { posePhoto: newItems[0] });
+          } else if (isMultiple) {
             setter((prev: any) => [...prev, ...newItems]);
           } else {
             setter(newItems[0]);
@@ -291,7 +354,21 @@ export default function DressXPage() {
           event.target.value = '';
         }
       };
+      
+  const updateModelCount = (count: number) => {
+    const newModels = Array.from({ length: count }, (_, i) => {
+        return models[i] || defaultModelConfig();
+    });
+    setModels(newModels);
+    if (!newModels.find(m => m.id === activeModelTab)) {
+        setActiveModelTab(newModels[0].id);
+    }
+  };
 
+  const updateModelConfig = (id: string, newConfig: Partial<ModelConfig>) => {
+    setModels(currentModels => currentModels.map(m => m.id === id ? {...m, ...newConfig} : m));
+  };
+  
   const handleGenerateOutfit = () => {
     if (generationsLeft !== null && generationsLeft <= 0) {
       toast({
@@ -302,53 +379,47 @@ export default function DressXPage() {
       return;
     }
 
-    if (useCustomPhoto && !userPhoto) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Photo',
-        description: 'Please select a photo of yourself to use the custom model feature.',
-      });
-      return;
-    }
-
-    if (!useCustomPhoto && race === 'None') {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Race',
-        description: 'Please select a race for the stock model.',
-      });
+    if (generationMode === 'custom' && !userPhoto) {
+      toast({ variant: 'destructive', title: 'Missing Photo', description: 'Please add a photo of yourself for custom mode.' });
       return;
     }
     
-    if (!selectedTop && !selectedDress) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Items',
-        description: 'Please select either a top or a dress.',
-      });
-      return;
+    // Validation for each model
+    for(const model of models) {
+        if (generationMode === 'stock' && model.race === 'None') {
+            toast({ variant: 'destructive', title: 'Missing Race', description: `Please select a race for Model ${models.indexOf(model) + 1}.` });
+            return;
+        }
+        if (!model.selectedTop && !model.selectedDress) {
+             toast({ variant: 'destructive', title: 'Missing Items', description: `Please select either a top or a dress for Model ${models.indexOf(model) + 1}.` });
+             return;
+        }
     }
 
-
-    const topItem = tops.find(t => t.id === selectedTop);
-    const bottomItem = bottoms.find(b => b.id === selectedBottom);
-    const dressItem = dresses.find(d => d.id === selectedDress);
-    const shoeItem = shoes.find(s => s.id === selectedShoe);
-
     const generationInput = {
-      userPhotoDataUri: useCustomPhoto ? userPhoto?.dataUri : undefined,
-      race: race,
-      gender: gender,
-      bodyType: bodyType,
-      view: view,
-      framing: framing,
-      background: background,
-      effect: effect,
-      topClothingDataUri: dressItem ? undefined : topItem?.dataUri,
-      bottomClothingDataUri: dressItem ? undefined : bottomItem?.dataUri,
-      dressDataUri: dressItem?.dataUri,
-      shoeDataUri: shoeItem?.dataUri,
-      poseReferenceDataUri: posePhoto?.dataUri,
+      generationMode,
+      userPhotoDataUri: generationMode === 'custom' ? userPhoto?.dataUri : undefined,
+      models: models.map(model => {
+        const topItem = tops.find(t => t.id === model.selectedTop);
+        const bottomItem = bottoms.find(b => b.id === model.selectedBottom);
+        const dressItem = dresses.find(d => d.id === model.selectedDress);
+        const shoeItem = shoes.find(s => s.id === model.selectedShoe);
+        return {
+          race: model.race,
+          gender: model.gender,
+          bodyType: model.bodyType,
+          topClothingDataUri: dressItem ? undefined : topItem?.dataUri,
+          bottomClothingDataUri: dressItem ? undefined : bottomItem?.dataUri,
+          dressDataUri: dressItem?.dataUri,
+          shoeDataUri: shoeItem?.dataUri,
+          poseReferenceDataUri: model.posePhoto?.dataUri,
+        }
+      }),
+      view,
+      viewAngle,
+      framing,
+      background,
+      effect,
     };
 
     try {
@@ -366,36 +437,41 @@ export default function DressXPage() {
 
   const removeItem = (
     id: string,
-    type: 'top' | 'bottom' | 'dress' | 'shoe' | 'user' | 'pose'
+    type: 'top' | 'bottom' | 'dress' | 'shoe' | 'user'
   ) => {
     if (type === 'user') setUserPhoto(null);
-    else if (type === 'pose') setPosePhoto(null);
     else if (type === 'top') {
       setTops(tops.filter(item => item.id !== id));
-      if (selectedTop === id) setSelectedTop(null);
+      setModels(models.map(m => m.selectedTop === id ? {...m, selectedTop: null} : m));
     } else if (type === 'bottom') {
       setBottoms(bottoms.filter(item => item.id !== id));
-      if (selectedBottom === id) setSelectedBottom(null);
+      setModels(models.map(m => m.selectedBottom === id ? {...m, selectedBottom: null} : m));
     } else if (type === 'dress') {
       setDresses(dresses.filter(item => item.id !== id));
-      if (selectedDress === id) setSelectedDress(null);
+      setModels(models.map(m => m.selectedDress === id ? {...m, selectedDress: null} : m));
     } else {
       setShoes(shoes.filter(item => item.id !== id));
-      if (selectedShoe === id) setSelectedShoe(null);
+      setModels(models.map(m => m.selectedShoe === id ? {...m, selectedShoe: null} : m));
     }
   };
+
+  const removePosePhoto = (modelId: string) => {
+    updateModelConfig(modelId, { posePhoto: null });
+  };
+  
+  const activeModel = models.find(m => m.id === activeModelTab) || models[0];
 
   const renderWardrobeItems = (
     items: ClothingItem[],
     selectedId: string | null,
-    onSelect: (id: string) => void,
+    onSelect: (id: string, modelId: string) => void,
     type: 'top' | 'bottom' | 'dress' | 'shoe'
   ) => (
     <div className="grid grid-cols-3 gap-2">
       {items.map(item => (
         <motion.div key={item.id} className="relative group" layout>
           <button
-            onClick={() => onSelect(item.id)}
+            onClick={() => onSelect(item.id, activeModel.id)}
             className={cn(
               'aspect-square w-full rounded-lg overflow-hidden border-2 transition-all',
               selectedId === item.id
@@ -424,21 +500,23 @@ export default function DressXPage() {
     </div>
   );
 
-  const handleSelectTop = (id: string) => {
-    setSelectedTop(id);
-    setSelectedDress(null);
+  const handleSelectTop = (id: string, modelId: string) => {
+    updateModelConfig(modelId, { selectedTop: id, selectedDress: null });
   };
-  const handleSelectBottom = (id: string) => {
-    setSelectedBottom(id);
-    setSelectedDress(null);
+  const handleSelectBottom = (id: string, modelId: string) => {
+    updateModelConfig(modelId, { selectedBottom: id, selectedDress: null });
   };
-  const handleSelectDress = (id: string) => {
-    setSelectedDress(id);
-    setSelectedTop(null);
-    setSelectedBottom(null);
+  const handleSelectDress = (id: string, modelId: string) => {
+    updateModelConfig(modelId, { selectedDress: id, selectedTop: null, selectedBottom: null });
   };
+  const handleSelectShoe = (id: string, modelId: string) => {
+    updateModelConfig(modelId, { selectedShoe: id });
+  }
 
-  const isReadyToGenerate = (!useCustomPhoto || userPhoto) && (selectedTop || selectedDress) && (!useCustomPhoto ? race !== 'None' : true);
+  const isReadyToGenerate =
+    (generationMode === 'clothing' || (generationMode === 'custom' && userPhoto) || (generationMode === 'stock' && models.every(m => m.race !== 'None')))
+    && models.every(m => m.selectedTop || m.selectedDress);
+
 
   if (pageStatus === 'loading') {
     return <Onboarding onComplete={handleRestoreComplete} introOnly={true} />;
@@ -451,15 +529,22 @@ export default function DressXPage() {
   return (
     <div className="flex flex-col md:flex-row md:h-screen bg-background">
       <input type="file" ref={userPhotoInputRef} onChange={handleFileUpload(setUserPhoto)} accept="image/*" className="hidden" />
-      <input type="file" ref={poseInputRef} onChange={handleFileUpload(setPosePhoto)} accept="image/*" className="hidden" />
+      {models.map(model => (
+          <input 
+              key={model.id}
+              type="file" 
+              ref={el => poseInputRefs.current[model.id] = el} 
+              onChange={handleFileUpload(() => {}, false, model.id)} 
+              accept="image/*" 
+              className="hidden" 
+          />
+      ))}
       <input type="file" ref={topInputRef} onChange={handleFileUpload(setTops, true)} accept="image/*" className="hidden" multiple />
       <input type="file" ref={bottomInputRef} onChange={handleFileUpload(setBottoms, true)} accept="image/*" className="hidden" multiple />
       <input type="file" ref={dressInputRef} onChange={handleFileUpload(setDresses, true)} accept="image/*" className="hidden" multiple />
       <input type="file" ref={shoeInputRef} onChange={handleFileUpload(setShoes, true)} accept="image/*" className="hidden" multiple />
 
-      <aside
-        className="w-full md:w-96 bg-card/60 border-r flex flex-col"
-      >
+      <aside className="w-full md:w-96 bg-card/60 border-r flex flex-col">
         <div className="sticky top-0 z-10 p-4 border-b bg-card/80 backdrop-blur-sm">
           <header className="flex justify-between items-center flex-wrap">
             <button onClick={handleHeaderClick} className="text-left group cursor-pointer mb-2 sm:mb-0">
@@ -469,91 +554,131 @@ export default function DressXPage() {
               </p>
             </button>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {generationsLeft !== null && resetsAt ? (
-                <>
-                  <Badge variant="outline" className="text-sm py-1 px-3 border-accent/50">
-                    <Zap className="h-4 w-4 mr-2 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold text-foreground">{generationsLeft}</span>
-                    <span className="text-muted-foreground ml-1.5">left</span>
-                  </Badge>
-                  <CountdownTimer resetsAt={resetsAt} />
-                </>
-              ) : (
-                <>
-                  <Skeleton className="h-[28px] w-[80px] rounded-full" />
-                  <Skeleton className="h-[28px] w-[90px] rounded-full" />
-                </>
-              )}
-              <Button variant="outline" size="icon" onClick={() => router.push('/history')} title="History">
-                <History className="h-5 w-5" />
-              </Button>
-              <Button variant="destructive" size="icon" onClick={handleClearWorkspace} title="Clear Workspace">
-                <Trash2 className="h-5 w-5" />
-              </Button>
+                <Button variant="outline" size="icon" onClick={toggleTheme} title="Toggle Theme">
+                  <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
+                {generationsLeft !== null && resetsAt ? (
+                  <>
+                    <Badge variant="outline" className="text-sm py-1 px-3 border-accent/50">
+                      <Zap className="h-4 w-4 mr-2 fill-yellow-400 text-yellow-400" />
+                      <span className="font-semibold text-foreground">{generationsLeft}</span>
+                      <span className="text-muted-foreground ml-1.5">left</span>
+                    </Badge>
+                    <CountdownTimer resetsAt={resetsAt} />
+                  </>
+                ) : (
+                  <>
+                    <Skeleton className="h-[28px] w-[80px] rounded-full" />
+                    <Skeleton className="h-[28px] w-[90px] rounded-full" />
+                  </>
+                )}
+                <Button variant="outline" size="icon" onClick={() => router.push('/history')} title="History">
+                  <History className="h-5 w-5" />
+                </Button>
+                <Button variant="destructive" size="icon" onClick={handleClearWorkspace} title="Clear Workspace">
+                  <Trash2 className="h-5 w-5" />
+                </Button>
             </div>
           </header>
         </div>
 
         <div className="p-4 flex flex-col gap-6 overflow-y-auto">
+          {/* --- MODEL CONFIGURATION --- */}
           <div className="space-y-4">
-            <h2 className="font-semibold">1. Your Model</h2>
-            
-            <div className="flex items-center space-x-2">
-              <Switch id="custom-photo-switch" checked={useCustomPhoto} onCheckedChange={setUseCustomPhoto} />
-              <Label htmlFor="custom-photo-switch">Use Custom Photo</Label>
+            <h2 className="font-semibold">1. Your Model(s)</h2>
+            <div className="space-y-2">
+                <Label>Generation Mode</Label>
+                <RadioGroup value={generationMode} onValueChange={(value: GenerationMode) => setGenerationMode(value)} className="grid grid-cols-3 gap-2">
+                    <Label htmlFor="mode-stock" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", generationMode === 'stock' && "border-primary")}>
+                        <RadioGroupItem value="stock" id="mode-stock" className="sr-only" />
+                        <Users className="mb-2 h-5 w-5" />
+                        Stock
+                    </Label>
+                    <Label htmlFor="mode-custom" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", generationMode === 'custom' && "border-primary")}>
+                        <RadioGroupItem value="custom" id="mode-custom" className="sr-only" />
+                        <Camera className="mb-2 h-5 w-5" />
+                        Custom
+                    </Label>
+                     <Label htmlFor="mode-clothing" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", generationMode === 'clothing' && "border-primary")}>
+                        <RadioGroupItem value="clothing" id="mode-clothing" className="sr-only" />
+                        <Shirt className="mb-2 h-5 w-5" />
+                        Clothing
+                    </Label>
+                </RadioGroup>
             </div>
 
-            {useCustomPhoto ? (
-              userPhoto ? (
+            {generationMode === 'custom' && (
+                userPhoto ? (
                 <div className="relative group w-full aspect-[4/5] rounded-lg overflow-hidden">
-                  <Image
-                    src={userPhoto.dataUri}
-                    alt="User"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="destructive"
-                      onClick={() => removeItem(userPhoto.id, 'user')}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Change Photo
+                    <Image src={userPhoto.dataUri} alt="User" fill className="object-cover" />
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="destructive" onClick={() => removeItem(userPhoto.id, 'user')}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Change Photo
                     </Button>
-                  </div>
+                    </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => userPhotoInputRef.current?.click()}
-                  className="w-full aspect-[4/5] rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-                >
-                  <User className="h-10 w-10 text-muted-foreground" />
-                  <span className="mt-2 text-sm font-medium">Add Photo</span>
+                ) : (
+                <button onClick={() => userPhotoInputRef.current?.click()} className="w-full aspect-[4/5] rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors">
+                    <User className="h-10 w-10 text-muted-foreground" />
+                    <span className="mt-2 text-sm font-medium">Add Photo of Yourself</span>
                 </button>
-              )
-            ) : (
-              <div className="space-y-4">
+                )
+            )}
+            
+            {generationMode === 'stock' && (
                 <div className="space-y-2">
-                    <Label>Race</Label>
-                    <Select value={race} onValueChange={(value: Race) => setRace(value)}>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Select race" />
-                        </SelectTrigger>
+                    <Label>Number of Models</Label>
+                    <Select value={String(models.length)} onValueChange={(value) => updateModelCount(Number(value))}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="None">None</SelectItem>
-                        <SelectItem value="Black American">Black American</SelectItem>
-                        <SelectItem value="Black">Black</SelectItem>
-                        <SelectItem value="Asian">Asian</SelectItem>
-                        <SelectItem value="Indian">Indian</SelectItem>
-                        <SelectItem value="White">White</SelectItem>
+                            <SelectItem value="1">1 Model</SelectItem>
+                            <SelectItem value="2">2 Models</SelectItem>
+                            <SelectItem value="3">3 Models</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="space-y-2">
-                    <Label>Body Type</Label>
-                    <Select value={bodyType} onValueChange={(value: BodyType) => setBodyType(value)}>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Select body type" />
-                        </SelectTrigger>
+            )}
+            
+            {generationMode !== 'clothing' && (
+            <Tabs value={activeModelTab} onValueChange={setActiveModelTab} className="w-full">
+              {models.length > 1 && (
+                <TabsList className="grid w-full grid-cols-3">
+                  {models.map((m, i) => (
+                    <TabsTrigger key={m.id} value={m.id}>Model {i + 1}</TabsTrigger>
+                  ))}
+                </TabsList>
+              )}
+              {models.map((model, index) => (
+                <TabsContent key={model.id} value={model.id} className="space-y-4">
+                  {generationMode === 'stock' && (
+                    <div className="space-y-2">
+                      <Label>Race (Model {index + 1})</Label>
+                      <Select value={model.race} onValueChange={(value: Race) => updateModelConfig(model.id, { race: value })}>
+                          <SelectTrigger><SelectValue placeholder="Select race" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="None">None</SelectItem>
+                            <SelectItem value="Black American">Black American</SelectItem>
+                            <SelectItem value="Black">Black</SelectItem>
+                            <SelectItem value="Asian">Asian</SelectItem>
+                            <SelectItem value="Indian">Indian</SelectItem>
+                            <SelectItem value="White">White</SelectItem>
+                          </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                      <Label>Gender (Model {index + 1})</Label>
+                      <RadioGroup value={model.gender} onValueChange={(value: 'male' | 'female') => updateModelConfig(model.id, { gender: value })} className="flex gap-4">
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="male" id={`m${model.id}`} /><Label htmlFor={`m${model.id}`}>Male</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="female" id={`f${model.id}`} /><Label htmlFor={`f${model.id}`}>Female</Label></div>
+                      </RadioGroup>
+                  </div>
+                   <div className="space-y-2">
+                    <Label>Body Type (Model {index + 1})</Label>
+                    <Select value={model.bodyType} onValueChange={(value: BodyType) => updateModelConfig(model.id, { bodyType: value })}>
+                        <SelectTrigger><SelectValue placeholder="Select body type" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="slim">Slim</SelectItem>
                           <SelectItem value="fit">Fit</SelectItem>
@@ -565,75 +690,62 @@ export default function DressXPage() {
                           <SelectItem value="bulky">Bulky</SelectItem>
                         </SelectContent>
                     </Select>
-                </div>
-              </div>
+                  </div>
+                   <div className="space-y-2">
+                        <Label>Pose Reference (Model {index + 1})</Label>
+                        {model.posePhoto ? (
+                          <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
+                            <Image src={model.posePhoto.dataUri} alt="Pose Reference" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="destructive" onClick={() => removePosePhoto(model.id)}><Trash2 className="mr-2 h-4 w-4" />Change Pose</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => poseInputRefs.current[model.id]?.click()} className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors">
+                            <Move className="h-10 w-10 text-muted-foreground" />
+                            <span className="mt-2 text-sm font-medium">Add Pose</span>
+                          </button>
+                        )}
+                    </div>
+                </TabsContent>
+              ))}
+            </Tabs>
             )}
-
-            <div className="space-y-2">
-              <Label>Gender</Label>
-              <RadioGroup
-                value={gender}
-                onValueChange={(value: 'male' | 'female') => setGender(value)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="male" id="r1" />
-                  <Label htmlFor="r1">Male</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="female" id="r2" />
-                  <Label htmlFor="r2">Female</Label>
-                </div>
-              </RadioGroup>
-            </div>
-            <div className="space-y-2">
-              <Label>View</Label>
-              <RadioGroup
-                value={view}
-                onValueChange={(value: 'front' | 'back') => setView(value)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="front" id="v1" />
-                  <Label htmlFor="v1">Front View</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="back" id="v2" />
-                  <Label htmlFor="v2">Back View</Label>
-                </div>
-              </RadioGroup>
-            </div>
-             <div className="space-y-2">
-              <Label>Framing</Label>
-              <RadioGroup
-                value={framing}
-                onValueChange={(value: Framing) => setFraming(value)}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="full-body" id="f1" />
-                  <Label htmlFor="f1">Full Body</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="half-body" id="f2" />
-                  <Label htmlFor="f2">Half Body</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="portrait" id="f3" />
-                  <Label htmlFor="f3">Portrait</Label>
-                </div>
-              </RadioGroup>
-            </div>
           </div>
 
+          {/* --- SCENE & STYLE --- */}
           <div className="space-y-4">
               <h2 className="font-semibold">2. Scene &amp; Style</h2>
+              {generationMode !== 'clothing' && (
+                  <>
+                  <div className="space-y-2">
+                      <Label>View Direction</Label>
+                      <RadioGroup value={view} onValueChange={(value: View) => setView(value)} className="grid grid-cols-3 gap-2">
+                          <Label htmlFor="v1" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'front' && "border-primary")}>
+                              <RadioGroupItem value="front" id="v1" className="sr-only" />Front
+                          </Label>
+                          <Label htmlFor="v2" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'back' && "border-primary")}>
+                              <RadioGroupItem value="back" id="v2" className="sr-only" />Back
+                          </Label>
+                          <Label htmlFor="v3" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'three-quarters' && "border-primary")}>
+                              <RadioGroupItem value="three-quarters" id="v3" className="sr-only" />3/4 View
+                          </Label>
+                      </RadioGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Framing</Label>
+                    <RadioGroup value={framing} onValueChange={(value: Framing) => setFraming(value)} className="flex gap-4">
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="full-body" id="f1" /><Label htmlFor="f1">Full Body</Label></div>
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="half-body" id="f2" /><Label htmlFor="f2">Half Body</Label></div>
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="portrait" id="f3" /><Label htmlFor="f3">Portrait</Label></div>
+                    </RadioGroup>
+                  </div>
+                  </>
+              )}
               <div className="space-y-2">
                   <Label>Background</Label>
                   <Select value={background} onValueChange={(value: Background) => setBackground(value)}>
-                      <SelectTrigger>
-                      <SelectValue placeholder="Select background" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select background" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Neutral Gray Studio">Neutral Gray Studio</SelectItem>
                         <SelectItem value="Black Studio">Black Studio</SelectItem>
@@ -647,12 +759,26 @@ export default function DressXPage() {
                       </SelectContent>
                   </Select>
               </div>
+              {generationMode !== 'clothing' && (
+                  <div className="space-y-2">
+                      <Label>Camera Angle</Label>
+                      <Select value={viewAngle} onValueChange={(value: ViewAngle) => setViewAngle(value)}>
+                          <SelectTrigger><SelectValue placeholder="Select view angle" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Eye-Level">Eye-Level</SelectItem>
+                            <SelectItem value="Low Angle">Low Angle</SelectItem>
+                            <SelectItem value="High Angle">High Angle</SelectItem>
+                            <SelectItem value="Worm's-Eye View">Worm's-Eye View</SelectItem>
+                            <SelectItem value="Overhead Shot">Overhead Shot</SelectItem>
+                            <SelectItem value="Fisheye Lens">Fisheye Lens</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              )}
                <div className="space-y-2">
                   <Label>Effect</Label>
                   <Select value={effect} onValueChange={(value: Effect) => setEffect(value)}>
-                      <SelectTrigger>
-                      <SelectValue placeholder="Select effect" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select effect" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="None">None</SelectItem>
                         <SelectItem value="Movie-Like">Movie-Like</SelectItem>
@@ -668,77 +794,25 @@ export default function DressXPage() {
               </div>
           </div>
 
-
+          {/* --- WARDROBE --- */}
           <div className="space-y-4">
-            <h2 className="font-semibold">3. Your Wardrobe</h2>
+            <h2 className="font-semibold">3. Your Wardrobe {models.length > 1 ? `(for Model ${models.indexOf(activeModel) + 1})` : ''}</h2>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">Tops</h3>
-                <Button size="sm" variant="outline" onClick={() => topInputRef.current?.click()}>
-                  <Plus className="h-4 w-4 mr-2" /> Add
-                </Button>
-              </div>
-              {renderWardrobeItems(tops, selectedTop, handleSelectTop, 'top')}
+              <div className="flex justify-between items-center"><h3 className="text-sm font-medium">Tops</h3><Button size="sm" variant="outline" onClick={() => topInputRef.current?.click()}><Plus className="h-4 w-4 mr-2" />Add</Button></div>
+              {renderWardrobeItems(tops, activeModel.selectedTop, handleSelectTop, 'top')}
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">Bottoms</h3>
-                <Button size="sm" variant="outline" onClick={() => bottomInputRef.current?.click()}>
-                  <Plus className="h-4 w-4 mr-2" /> Add
-                </Button>
-              </div>
-              {renderWardrobeItems(bottoms, selectedBottom, handleSelectBottom, 'bottom')}
+              <div className="flex justify-between items-center"><h3 className="text-sm font-medium">Bottoms</h3><Button size="sm" variant="outline" onClick={() => bottomInputRef.current?.click()}><Plus className="h-4 w-4 mr-2" />Add</Button></div>
+              {renderWardrobeItems(bottoms, activeModel.selectedBottom, handleSelectBottom, 'bottom')}
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">Dresses</h3>
-                <Button size="sm" variant="outline" onClick={() => dressInputRef.current?.click()}>
-                  <Plus className="h-4 w-4 mr-2" /> Add
-                </Button>
-              </div>
-              {renderWardrobeItems(dresses, selectedDress, handleSelectDress, 'dress')}
+              <div className="flex justify-between items-center"><h3 className="text-sm font-medium">Dresses</h3><Button size="sm" variant="outline" onClick={() => dressInputRef.current?.click()}><Plus className="h-4 w-4 mr-2" />Add</Button></div>
+              {renderWardrobeItems(dresses, activeModel.selectedDress, handleSelectDress, 'dress')}
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">Shoes (Optional)</h3>
-                <Button size="sm" variant="outline" onClick={() => shoeInputRef.current?.click()}>
-                  <Plus className="h-4 w-4 mr-2" /> Add
-                </Button>
-              </div>
-              {renderWardrobeItems(shoes, selectedShoe, setSelectedShoe, 'shoe')}
+              <div className="flex justify-between items-center"><h3 className="text-sm font-medium">Shoes (Optional)</h3><Button size="sm" variant="outline" onClick={() => shoeInputRef.current?.click()}><Plus className="h-4 w-4 mr-2" />Add</Button></div>
+              {renderWardrobeItems(shoes, activeModel.selectedShoe, handleSelectShoe, 'shoe')}
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <h2 className="font-semibold">4. Pose Reference (Optional)</h2>
-            {posePhoto ? (
-              <div className="relative group w-full aspect-square rounded-lg overflow-hidden">
-                <Image
-                  src={posePhoto.dataUri}
-                  alt="Pose Reference"
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="destructive"
-                    onClick={() => removeItem(posePhoto.id, 'pose')}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Change Pose
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => poseInputRef.current?.click()}
-                className="w-full aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center hover:border-primary transition-colors"
-              >
-                <Move className="h-10 w-10 text-muted-foreground" />
-                <span className="mt-2 text-sm font-medium">
-                  Add Pose Photo
-                </span>
-              </button>
-            )}
           </div>
         </div>
       </aside>
@@ -750,33 +824,44 @@ export default function DressXPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-8 text-center max-w-lg"
         >
-           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-             <div className="flex flex-col items-center gap-2">
-               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                {useCustomPhoto && userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-               </div>
-               <p className="font-medium text-sm md:text-base">{useCustomPhoto ? "Your Photo" : "Model"}</p>
-             </div>
-             
-             <div className="flex flex-col items-center gap-2">
-               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                {selectedDress ? <Image src={dresses.find(d => d.id === selectedDress)!.dataUri} alt="Dress" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : (selectedTop ? <Image src={tops.find(t => t.id === selectedTop)!.dataUri} alt="Top" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />)}
-               </div>
-               <p className="font-medium text-sm md:text-base">{selectedDress ? 'Selected Dress' : 'Selected Top'}</p>
-             </div>
-
-             <div className="flex flex-col items-center gap-2">
-               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                 {selectedBottom ? <Image src={bottoms.find(b => b.id === selectedBottom)!.dataUri} alt="Bottom" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <div className="text-muted-foreground h-10 w-10 md:h-12 md:w-12" />}
-               </div>
-               <p className="font-medium text-sm md:text-base">Selected Bottom</p>
-             </div>
-             <div className="flex flex-col items-center gap-2 md:col-start-2">
-               <div className="h-24 w-24 md:h-32 md:w-32 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                {selectedShoe ? <Image src={shoes.find(s => s.id === selectedShoe)!.dataUri} alt="Shoes" width={128} height={128} className="rounded-full object-cover h-full w-full" /> : <Footprints className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />}
-               </div>
-               <p className="font-medium text-sm md:text-base">Shoes</p>
-             </div>
+           <div className="flex flex-wrap justify-center items-start gap-4 md:gap-6">
+             {models.map((model, index) => {
+                const top = tops.find(t => t.id === model.selectedTop);
+                const bottom = bottoms.find(b => b.id === model.selectedBottom);
+                const dress = dresses.find(d => d.id === model.selectedDress);
+                const shoe = shoes.find(s => s.id === model.selectedShoe);
+                return (
+                    <div key={model.id} className="flex flex-col items-center gap-4">
+                        <p className="font-bold text-lg">Model {index + 1}</p>
+                        <div className="flex gap-2">
+                        {generationMode !== 'clothing' && (
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                                {generationMode === 'custom' && userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 text-muted-foreground" />}
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                            {dress ? <Image src={dress.dataUri} alt="Dress" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : (top ? <Image src={top.dataUri} alt="Top" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 text-muted-foreground" />)}
+                            </div>
+                        </div>
+                         { !dress && (
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                                    {bottom ? <Image src={bottom.dataUri} alt="Bottom" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <Swords className="h-10 w-10 text-muted-foreground -rotate-45" />}
+                                </div>
+                            </div>
+                         )}
+                         <div className="flex flex-col items-center gap-2">
+                            <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                            {shoe ? <Image src={shoe.dataUri} alt="Shoes" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <FootprintsIcon className="h-10 w-10 text-muted-foreground" />}
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                );
+             })}
            </div>
           <Button
             size="lg"
@@ -787,10 +872,8 @@ export default function DressXPage() {
             Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
           {!isReadyToGenerate && (
-            <p className="text-sm text-muted-foreground">
-              {useCustomPhoto && !userPhoto ? "Select your photo to begin." : ""}
-              {!useCustomPhoto && race === 'None' ? "Please select a race to begin." : ""}
-              {!selectedTop && !selectedDress ? " Select a top or dress to begin." : ""}
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              Please select a generation mode, model details (if applicable), and a top or dress for each model to begin.
             </p>
           )}
           {generationsLeft !== null && generationsLeft <= 0 && (
@@ -808,5 +891,3 @@ export default function DressXPage() {
     </div>
   );
 }
-
-    

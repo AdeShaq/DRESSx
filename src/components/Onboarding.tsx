@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, User, Shirt, Zap, AlertTriangle, Timer } from 'lucide-react';
+import { ArrowRight, User, Shirt, Zap, AlertTriangle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -12,7 +12,7 @@ interface OnboardingProps {
   introOnly?: boolean;
 }
 
-type OnboardingStep = 'intro' | 'welcome' | 'how' | 'warning';
+type OnboardingStep = 'intro' | 'welcome' | 'how' | 'history' | 'warning';
 
 const SplitText = ({ children }: { children: string }) => {
   const letters = Array.from(children);
@@ -74,7 +74,7 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
               transition={{ delay: 1.0, duration: 0.8 }}
               className="text-lg md:text-xl text-muted-foreground"
             >
-              Your virtual AI dress try on.
+              Your AI-powered virtual closet.
             </motion.p>
           </motion.div>
         );
@@ -92,7 +92,7 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
                   Instantly try on any clothing item from your wardrobe or a store's catalog on a photorealistic version of yourself. No more guesswork, just perfect fits.
                 </p>
                 <Button onClick={() => setStep('how')} size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                  Next <ArrowRight className="ml-2" />
+                  How It Works <ArrowRight className="ml-2" />
                 </Button>
               </CardContent>
             </Card>
@@ -108,40 +108,59 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="bg-primary/20 text-primary p-3 rounded-lg">
-                    <User className="h-6 w-6" />
-                  </div>
+                  <div className="bg-primary/20 text-primary p-3 rounded-lg"><User className="h-6 w-6" /></div>
                   <div>
-                    <h4 className="font-semibold">1. Upload Your Photo</h4>
-                    <p className="text-muted-foreground text-sm">Add a clear, full-body photo of yourself.</p>
+                    <h4 className="font-semibold">1. Choose Your Model</h4>
+                    <p className="text-muted-foreground text-sm">Use our stock models, or upload your own photo.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="bg-primary/20 text-primary p-3 rounded-lg">
-                    <Shirt className="h-6 w-6" />
-                  </div>
+                  <div className="bg-primary/20 text-primary p-3 rounded-lg"><Shirt className="h-6 w-6" /></div>
                   <div>
                     <h4 className="font-semibold">2. Add Your Clothes</h4>
                     <p className="text-muted-foreground text-sm">Upload images of tops, bottoms, dresses, and shoes.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="bg-primary/20 text-primary p-3 rounded-lg">
-                    <Zap className="h-6 w-6" />
-                  </div>
+                  <div className="bg-primary/20 text-primary p-3 rounded-lg"><Zap className="h-6 w-6" /></div>
                   <div>
                     <h4 className="font-semibold">3. Generate Your Look</h4>
                     <p className="text-muted-foreground text-sm">Select an outfit and let our AI create your virtual try-on!</p>
                   </div>
                 </div>
-                <Button onClick={() => setStep('warning')} size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                <Button onClick={() => setStep('history')} size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                   Next <ArrowRight className="ml-2" />
                 </Button>
               </CardContent>
             </Card>
           </motion.div>
         );
-        
+      
+      case 'history':
+        return (
+          <motion.div key="history" variants={cardVariants} initial="hidden" animate="visible" exit="exit">
+            <Card className="glassmorphic w-full max-w-md text-center">
+              <CardHeader>
+                 <div className="mx-auto bg-blue-500/20 p-3 rounded-full mb-2">
+                    <History className="h-8 w-8 text-blue-400" />
+                 </div>
+                <CardTitle className="text-3xl">Your 24-Hour History</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-foreground/90">
+                  To keep things fresh and fast, your generated images will be stored in your history for <strong>24 hours</strong>. After that, they will be automatically cleared.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Be sure to download any creations you want to keep permanently!
+                </p>
+                <Button onClick={() => setStep('warning')} size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                  Got It <ArrowRight className="ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
       case 'warning':
         return (
           <motion.div key="warning" variants={cardVariants} initial="hidden" animate="visible" exit="exit">
@@ -150,18 +169,12 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
                  <div className="mx-auto bg-amber-500/20 p-3 rounded-full mb-2">
                     <AlertTriangle className="h-8 w-8 text-amber-500" />
                  </div>
-                <CardTitle className="text-3xl">A Few Quick Notes</CardTitle>
+                <CardTitle className="text-3xl">A Few Final Notes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-foreground/90">
                   Our AI is powerful, but not always perfect. It may not capture every detail of your face or a specific pose with 100% accuracy. We're constantly improving!
                 </p>
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pt-2">
-                    <Timer className="h-4 w-4 flex-shrink-0" />
-                    <p>
-                        There's a minor delay for the counter to load. Please wait for it to appear before generating.
-                    </p>
-                </div>
                 <Button onClick={onComplete} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 !mt-6">
                   Let's Go!
                 </Button>

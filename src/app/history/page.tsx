@@ -42,9 +42,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface HistoryItem {
   id: string;
   dataUri: string;
+  timestamp: number;
 }
 
-// New LazyImage component for better performance on mobile
+// LazyImage component for better performance
 const LazyImage = ({ dataUri }: { dataUri: string }) => {
   const [imageSrc, setImageSrc] = React.useState<string | null>(null);
 
@@ -91,10 +92,18 @@ export default function HistoryPage() {
       try {
         const storedHistory = localStorage.getItem('dressx_history');
         if (storedHistory) {
-          setHistory(JSON.parse(storedHistory));
+          const parsedHistory: HistoryItem[] = JSON.parse(storedHistory);
+          
+          // Filter out items older than 24 hours
+          const twentyFourHoursAgo = new Date().getTime() - (24 * 60 * 60 * 1000);
+          const filteredHistory = parsedHistory.filter(item => item.timestamp && item.timestamp > twentyFourHoursAgo);
+          
+          setHistory(filteredHistory);
+          // Save the filtered history back to localStorage
+          localStorage.setItem('dressx_history', JSON.stringify(filteredHistory));
         }
       } catch (error) {
-        console.error("Failed to parse history from localStorage", error);
+        console.error("Failed to parse or filter history from localStorage", error);
       }
     }
   }, []);
@@ -169,7 +178,7 @@ export default function HistoryPage() {
             <div>
               <CardTitle>Generation History</CardTitle>
               <CardDescription>
-                Here are your previously generated outfits. Click an image to preview.
+                Your saved images from the last 24 hours. Click an image to preview.
               </CardDescription>
             </div>
             <Button variant="outline" onClick={handleGoBack}>
@@ -269,8 +278,8 @@ export default function HistoryPage() {
               isMounted && (
                 <div className="flex flex-col items-center justify-center text-center py-16">
                   <Frown className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold">No History Found</h3>
-                  <p className="text-muted-foreground">Go generate some amazing outfits to see them here!</p>
+                  <h3 className="text-xl font-semibold">No Recent History</h3>
+                  <p className="text-muted-foreground">Generate some amazing outfits to see them here!</p>
                 </div>
               )
             )}

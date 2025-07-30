@@ -54,7 +54,7 @@ export const useGenerationCount = () => {
             setError(null);
         }, (err) => {
             console.error("Error fetching real-time generation count:", err);
-            setError("Could not get generation count. Functionality may be limited.");
+            setError("Could not connect to the generation service. Please check your network connection and firewall settings.");
             setGenerationsLeft(null);
             setResetsAt(null);
         });

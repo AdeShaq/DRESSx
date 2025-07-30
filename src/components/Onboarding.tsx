@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, User, Shirt, Zap, AlertTriangle, History } from 'lucide-react';
+import { ArrowRight, User, Shirt, Zap, AlertTriangle, History, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -169,12 +169,27 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
                  <div className="mx-auto bg-amber-500/20 p-3 rounded-full mb-2">
                     <AlertTriangle className="h-8 w-8 text-amber-500" />
                  </div>
-                <CardTitle className="text-3xl">A Few Final Notes</CardTitle>
+                <CardTitle className="text-3xl">Tips & Tricks</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-foreground/90">
-                  Our AI is powerful, but not always perfect. It may not capture every detail of your face or a specific pose with 100% accuracy. We're constantly improving!
-                </p>
+              <CardContent className="space-y-4 text-left">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 mt-0.5 text-amber-500 flex-shrink-0" />
+                    <p className="text-foreground/90 text-sm">
+                      This AI is powerful, but not perfect. It may not capture every detail of a face or pose with 100% accuracy, especially with custom photos.
+                    </p>
+                  </div>
+                   <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 mt-0.5 text-amber-500 flex-shrink-0" />
+                    <p className="text-foreground/90 text-sm">
+                      If you don't love the result, try regenerating! Sometimes a second try is all it takes for the perfect look.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 mt-0.5 text-amber-500 flex-shrink-0" />
+                    <p className="text-foreground/90 text-sm">
+                      Multi-model generation works best when both models are wearing the same or very similar clothing items.
+                    </p>
+                  </div>
                 <Button onClick={onComplete} size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 !mt-6">
                   Let's Go!
                 </Button>
@@ -196,3 +211,5 @@ export function Onboarding({ onComplete, introOnly = false }: OnboardingProps) {
     </div>
   );
 }
+
+    

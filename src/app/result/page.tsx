@@ -29,13 +29,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { GeneratePhotorealisticOutfitInput } from '@/ai/flows/generate-photorealistic-outfit';
 import { generateOutfitAction } from '@/app/actions';
-import { resizeImage } from '@/lib/utils';
 
-const GENERATION_INPUT_KEY = 'dressx_generation_input';
+const GENERATION_INPUT_KEY = 'dressx_generation_input_v2';
 
 interface HistoryItem {
   id: string;
   dataUri: string;
+  timestamp: number;
 }
 
 type PageStatus = 'initializing' | 'loading' | 'success' | 'error' | 'idle';
@@ -44,7 +44,7 @@ export default function ResultPage() {
   const router = useRouter();
   const { toast } = useToast();
   const generationInitiated = React.useRef(false);
-  
+  const THEME_KEY = 'dressx_theme';
   const [generationInput, setGenerationInput] = React.useState<GeneratePhotorealisticOutfitInput | null>(null);
 
   const [status, setStatus] = React.useState<PageStatus>('initializing');
@@ -64,14 +64,17 @@ export default function ResultPage() {
 
   const saveToHistory = React.useCallback(async (outfitDataUri: string) => {
     try {
-      const historyImageUri = await resizeImage(outfitDataUri, 400, 533); 
-      const newHistoryItem: HistoryItem = { id: uuidv4(), dataUri: historyImageUri };
+      // Save the original, full-quality data URI with a timestamp
+      const newHistoryItem: HistoryItem = { 
+        id: uuidv4(), 
+        dataUri: outfitDataUri,
+        timestamp: new Date().getTime()
+      };
       
       const storedHistory = localStorage.getItem('dressx_history');
       const history = storedHistory ? JSON.parse(storedHistory) : [];
       
-      const HISTORY_LIMIT = 12;
-      const updatedHistory = [newHistoryItem, ...history].slice(0, HISTORY_LIMIT);
+      const updatedHistory = [newHistoryItem, ...history];
 
       localStorage.setItem('dressx_history', JSON.stringify(updatedHistory));
     } catch (historyError) {
@@ -86,16 +89,24 @@ export default function ResultPage() {
 
   React.useEffect(() => {
     if (status === 'success' && generatedOutfit) {
-        // Use requestIdleCallback to save to history when the browser is idle
         if ('requestIdleCallback' in window) {
             window.requestIdleCallback(() => saveToHistory(generatedOutfit));
         } else {
-            // Fallback for older browsers
             setTimeout(() => saveToHistory(generatedOutfit), 0);
         }
     }
   }, [status, generatedOutfit, saveToHistory]);
 
+    React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem(THEME_KEY) || 'dark';
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
 
   const runGeneration = React.useCallback(async (input: GeneratePhotorealisticOutfitInput) => {
     setStatus('loading');
@@ -118,6 +129,7 @@ export default function ResultPage() {
             throw new Error('Image generation failed to return an image.');
         }
     } catch (err) {
+        console.error("Caught generation error on result page:", err);
         const errorMessage =
             err instanceof Error
             ? err.message
@@ -218,7 +230,7 @@ export default function ResultPage() {
     const mouseY = e.clientY - rect.top;
     const zoomFactor = 1.1;
     const newScale = e.deltaY < 0 ? transform.scale * zoomFactor : transform.scale / zoomFactor;
-    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
+    const clampedScale = Math.max(0.5, Math.min(5, newScale));
 
     const newX = mouseX - (mouseX - transform.x) * (clampedScale / transform.scale);
     const newY = mouseY - (mouseY - transform.y) * (clampedScale / transform.scale);
@@ -250,7 +262,7 @@ export default function ResultPage() {
     
     const zoomFactor = 1.2;
     const newScale = direction === 'in' ? transform.scale * zoomFactor : transform.scale / zoomFactor;
-    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
+    const clampedScale = Math.max(0.5, Math.min(5, newScale));
     
     const newX = centerX - (centerX - transform.x) * (clampedScale / transform.scale);
     const newY = centerY - (centerY - transform.y) * (clampedScale / transform.scale);

@@ -52,7 +52,7 @@ interface ClothingItem {
 }
 
 type PageStatus = 'loading' | 'onboarding' | 'ready';
-type GenerationMode = 'stock' | 'custom' | 'clothing';
+type GenerationMode = 'stock' | 'custom';
 type Race = 'None' | 'Black American' | 'Black' | 'Asian' | 'Indian' | 'White';
 type BodyType = 'fat' | 'chubby' | 'slim' | 'fit' | 'muscular' | 'model' | 'bulky' | 'shredded';
 type Background = 'Neutral Gray Studio' | 'Black Studio' |'Outdoor City Street' | 'Beach Sunset' | 'Forest Path' | 'Cozy Cafe' | 'Urban Rooftop' | 'Minimalist White Room' | 'Vibrant Graffiti Wall';
@@ -172,19 +172,24 @@ export default function DressXPage() {
     if (typeof window !== 'undefined') {
       const onboardingComplete = sessionStorage.getItem(ONBOARDING_KEY) === 'true';
       if (onboardingComplete) {
-        setPageStatus('loading');
+        setPageStatus('ready');
       } else {
         setPageStatus('onboarding');
       }
     }
   }, []);
+  
+  React.useEffect(() => {
+    if (viewAngle === "Worm's-Eye View" || viewAngle === 'Overhead Shot') {
+        if (framing !== 'full-body') {
+            setFraming('full-body');
+        }
+    }
+  }, [viewAngle, framing]);
+
 
   const handleOnboardingComplete = () => {
     sessionStorage.setItem(ONBOARDING_KEY, 'true');
-    setPageStatus('ready');
-  };
-
-  const handleRestoreComplete = () => {
     setPageStatus('ready');
   };
 
@@ -280,13 +285,15 @@ export default function DressXPage() {
   React.useEffect(() => {
     if (generationMode !== 'custom') {
       setUserPhoto(null);
-    } 
-    if (generationMode === 'custom' || generationMode === 'clothing') {
-      const newModels = [models[0] || defaultModelConfig()];
-      setModels(newModels);
-      setActiveModelTab(newModels[0].id);
+    } else {
+    // Only reset models if not already in correct state
+    if (models.length !== 1) {
+      const newModel = models[0] || defaultModelConfig();
+      setModels([newModel]);
+      setActiveModelTab(newModel.id);
     }
-  }, [generationMode]);
+    }
+  }, [generationMode, models]);
 
   const handleClearWorkspace = () => {
     const newModel = defaultModelConfig();
@@ -370,7 +377,17 @@ export default function DressXPage() {
   };
   
   const handleGenerateOutfit = () => {
-    if (generationsLeft !== null && generationsLeft <= 0) {
+    // Critical check: ensure generation service is connected and has credits.
+    if (generationsLeft === null) {
+      toast({
+          variant: 'destructive',
+          title: 'Service Not Ready',
+          description: generationCountError || 'Connecting to the generation service. Please try again in a moment.',
+      });
+      return;
+    }
+
+    if (generationsLeft <= 0) {
       toast({
           variant: 'destructive',
           title: 'No Generations Left',
@@ -424,7 +441,8 @@ export default function DressXPage() {
 
     try {
       sessionStorage.setItem(GENERATION_INPUT_KEY, JSON.stringify(generationInput));
-      router.push('/result');
+      // Force navigation using window.location.href to avoid router issues.
+      window.location.href = '/result';
     } catch (e) {
       console.error("Error saving generation input to session storage", e);
       toast({
@@ -514,12 +532,32 @@ export default function DressXPage() {
   }
 
   const isReadyToGenerate =
-    (generationMode === 'clothing' || (generationMode === 'custom' && userPhoto) || (generationMode === 'stock' && models.every(m => m.race !== 'None')))
+    models.length > 0 &&
+    ((generationMode === 'custom' && userPhoto) || (generationMode === 'stock' && models.every(m => m.race !== 'None')))
     && models.every(m => m.selectedTop || m.selectedDress);
+    
+  const isFramingDisabled = viewAngle === "Worm's-Eye View" || viewAngle === 'Overhead Shot';
+
+  const renderGenerateButtonContent = () => {
+    if (generationCountError) {
+      return 'Generation Service Error';
+    }
+    if (generationsLeft === null) {
+      return 'Connecting...';
+    }
+    if (generationsLeft <= 0) {
+      return 'No Generations Left';
+    }
+    return (
+      <>
+        Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
+      </>
+    );
+  };
 
 
   if (pageStatus === 'loading') {
-    return <Onboarding onComplete={handleRestoreComplete} introOnly={true} />;
+    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black p-4"><Onboarding onComplete={() => setPageStatus('ready')} introOnly={true} /></div>;
   }
   
   if (pageStatus === 'onboarding') {
@@ -590,7 +628,7 @@ export default function DressXPage() {
             <h2 className="font-semibold">1. Your Model(s)</h2>
             <div className="space-y-2">
                 <Label>Generation Mode</Label>
-                <RadioGroup value={generationMode} onValueChange={(value: GenerationMode) => setGenerationMode(value)} className="grid grid-cols-3 gap-2">
+                <RadioGroup value={generationMode} onValueChange={(value: GenerationMode) => setGenerationMode(value)} className="grid grid-cols-2 gap-2">
                     <Label htmlFor="mode-stock" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", generationMode === 'stock' && "border-primary")}>
                         <RadioGroupItem value="stock" id="mode-stock" className="sr-only" />
                         <Users className="mb-2 h-5 w-5" />
@@ -600,11 +638,6 @@ export default function DressXPage() {
                         <RadioGroupItem value="custom" id="mode-custom" className="sr-only" />
                         <Camera className="mb-2 h-5 w-5" />
                         Custom
-                    </Label>
-                     <Label htmlFor="mode-clothing" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", generationMode === 'clothing' && "border-primary")}>
-                        <RadioGroupItem value="clothing" id="mode-clothing" className="sr-only" />
-                        <Shirt className="mb-2 h-5 w-5" />
-                        Clothing
                     </Label>
                 </RadioGroup>
             </div>
@@ -635,16 +668,14 @@ export default function DressXPage() {
                         <SelectContent>
                             <SelectItem value="1">1 Model</SelectItem>
                             <SelectItem value="2">2 Models</SelectItem>
-                            <SelectItem value="3">3 Models</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             )}
             
-            {generationMode !== 'clothing' && (
             <Tabs value={activeModelTab} onValueChange={setActiveModelTab} className="w-full">
               {models.length > 1 && (
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   {models.map((m, i) => (
                     <TabsTrigger key={m.id} value={m.id}>Model {i + 1}</TabsTrigger>
                   ))}
@@ -710,38 +741,44 @@ export default function DressXPage() {
                 </TabsContent>
               ))}
             </Tabs>
-            )}
           </div>
 
           {/* --- SCENE & STYLE --- */}
           <div className="space-y-4">
               <h2 className="font-semibold">2. Scene &amp; Style</h2>
-              {generationMode !== 'clothing' && (
-                  <>
-                  <div className="space-y-2">
-                      <Label>View Direction</Label>
-                      <RadioGroup value={view} onValueChange={(value: View) => setView(value)} className="grid grid-cols-3 gap-2">
-                          <Label htmlFor="v1" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'front' && "border-primary")}>
-                              <RadioGroupItem value="front" id="v1" className="sr-only" />Front
-                          </Label>
-                          <Label htmlFor="v2" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'back' && "border-primary")}>
-                              <RadioGroupItem value="back" id="v2" className="sr-only" />Back
-                          </Label>
-                          <Label htmlFor="v3" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'three-quarters' && "border-primary")}>
-                              <RadioGroupItem value="three-quarters" id="v3" className="sr-only" />3/4 View
-                          </Label>
-                      </RadioGroup>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Framing</Label>
-                    <RadioGroup value={framing} onValueChange={(value: Framing) => setFraming(value)} className="flex gap-4">
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="full-body" id="f1" /><Label htmlFor="f1">Full Body</Label></div>
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="half-body" id="f2" /><Label htmlFor="f2">Half Body</Label></div>
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="portrait" id="f3" /><Label htmlFor="f3">Portrait</Label></div>
-                    </RadioGroup>
-                  </div>
-                  </>
-              )}
+              
+              <div className="space-y-2">
+                  <Label>View Direction</Label>
+                  <RadioGroup value={view} onValueChange={(value: View) => setView(value)} className="grid grid-cols-3 gap-2">
+                      <Label htmlFor="v1" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'front' && "border-primary")}>
+                          <RadioGroupItem value="front" id="v1" className="sr-only" />Front
+                      </Label>
+                      <Label htmlFor="v2" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'back' && "border-primary")}>
+                          <RadioGroupItem value="back" id="v2" className="sr-only" />Back
+                      </Label>
+                      <Label htmlFor="v3" className={cn("flex items-center justify-center rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground cursor-pointer", view === 'three-quarters' && "border-primary")}>
+                          <RadioGroupItem value="three-quarters" id="v3" className="sr-only" />3/4 View
+                      </Label>
+                  </RadioGroup>
+              </div>
+              <div className="space-y-2">
+                <Label>Framing</Label>
+                 <RadioGroup value={framing} onValueChange={(v: Framing) => !isFramingDisabled && setFraming(v)} className="flex gap-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="full-body" id="f1" disabled={isFramingDisabled} />
+                        <Label htmlFor="f1" className={cn(isFramingDisabled && "text-muted-foreground/50")}>Full Body</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="half-body" id="f2" disabled={isFramingDisabled} />
+                        <Label htmlFor="f2" className={cn(isFramingDisabled && "text-muted-foreground/50")}>Half Body</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="portrait" id="f3" disabled={isFramingDisabled} />
+                        <Label htmlFor="f3" className={cn(isFramingDisabled && "text-muted-foreground/50")}>Portrait</Label>
+                    </div>
+                 </RadioGroup>
+              </div>
+                  
               <div className="space-y-2">
                   <Label>Background</Label>
                   <Select value={background} onValueChange={(value: Background) => setBackground(value)}>
@@ -759,22 +796,22 @@ export default function DressXPage() {
                       </SelectContent>
                   </Select>
               </div>
-              {generationMode !== 'clothing' && (
-                  <div className="space-y-2">
-                      <Label>Camera Angle</Label>
-                      <Select value={viewAngle} onValueChange={(value: ViewAngle) => setViewAngle(value)}>
-                          <SelectTrigger><SelectValue placeholder="Select view angle" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Eye-Level">Eye-Level</SelectItem>
-                            <SelectItem value="Low Angle">Low Angle</SelectItem>
-                            <SelectItem value="High Angle">High Angle</SelectItem>
-                            <SelectItem value="Worm's-Eye View">Worm's-Eye View</SelectItem>
-                            <SelectItem value="Overhead Shot">Overhead Shot</SelectItem>
-                            <SelectItem value="Fisheye Lens">Fisheye Lens</SelectItem>
-                          </SelectContent>
-                      </Select>
-                  </div>
-              )}
+              
+              <div className="space-y-2">
+                  <Label>Camera Angle</Label>
+                  <Select value={viewAngle} onValueChange={(value: ViewAngle) => setViewAngle(value)}>
+                      <SelectTrigger><SelectValue placeholder="Select view angle" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Eye-Level">Eye-Level</SelectItem>
+                        <SelectItem value="Low Angle">Low Angle</SelectItem>
+                        <SelectItem value="High Angle">High Angle</SelectItem>
+                        <SelectItem value="Worm's-Eye View">Worm's-Eye View</SelectItem>
+                        <SelectItem value="Overhead Shot">Overhead Shot</SelectItem>
+                        <SelectItem value="Fisheye Lens">Fisheye Lens</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
+              
                <div className="space-y-2">
                   <Label>Effect</Label>
                   <Select value={effect} onValueChange={(value: Effect) => setEffect(value)}>
@@ -834,13 +871,13 @@ export default function DressXPage() {
                     <div key={model.id} className="flex flex-col items-center gap-4">
                         <p className="font-bold text-lg">Model {index + 1}</p>
                         <div className="flex gap-2">
-                        {generationMode !== 'clothing' && (
+                        
                             <div className="flex flex-col items-center gap-2">
                                 <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
                                 {generationMode === 'custom' && userPhoto ? <Image src={userPhoto.dataUri} alt="User" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <User className="h-10 w-10 text-muted-foreground" />}
                                 </div>
                             </div>
-                        )}
+                        
                         <div className="flex flex-col items-center gap-2">
                             <div className="h-24 w-24 rounded-full border-2 border-dashed flex items-center justify-center bg-background/50 backdrop-blur-sm">
                             {dress ? <Image src={dress.dataUri} alt="Dress" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : (top ? <Image src={top.dataUri} alt="Top" width={96} height={96} className="rounded-full object-cover h-full w-full" /> : <Shirt className="h-10 w-10 text-muted-foreground" />)}
@@ -866,10 +903,10 @@ export default function DressXPage() {
           <Button
             size="lg"
             onClick={handleGenerateOutfit}
-            disabled={!isReadyToGenerate || generationsLeft === null || generationsLeft <= 0}
+            disabled={!isReadyToGenerate || generationsLeft === null || generationsLeft <= 0 || !!generationCountError}
             variant="accent"
           >
-            Generate Outfit <ArrowRight className="ml-2 h-5 w-5" />
+            {renderGenerateButtonContent()}
           </Button>
           {!isReadyToGenerate && (
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
@@ -891,3 +928,5 @@ export default function DressXPage() {
     </div>
   );
 }
+
+    
